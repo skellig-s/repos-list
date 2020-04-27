@@ -1,0 +1,17 @@
+{
+  "/oauth/*": {
+    "target": "https://github.com/login",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true
+  },
+  "/api": {
+    "target": "https://api.github.com",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api": ""
+    }
+  }
+}

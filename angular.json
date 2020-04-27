@@ -5,7 +5,11 @@
   "projects": {
     "repos-list": {
       "projectType": "application",
-      "schematics": {},
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -62,7 +66,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "repos-list:build"
+            "browserTarget": "repos-list:build",
+            "proxyConfig": "src/proxy.conf.json"
           },
           "configurations": {
             "production": {
