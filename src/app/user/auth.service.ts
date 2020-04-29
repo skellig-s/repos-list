@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { User } from './user';
 
 interface OAuthResponse {
@@ -17,34 +17,44 @@ interface OAuthResponse {
 export class AuthService {
 
   loginPopupWindowRef: Window;
-  currentUser$ = new BehaviorSubject<User>(null);
+  currentUser: User;
 
   constructor(private http: HttpClient) {
+    const userInfo = localStorage.getItem('userInfo');
+    this.currentUser = userInfo ? JSON.parse(userInfo) : null;
   }
 
-  public login(): void {
-    window.addEventListener('message', (message) => {
-      if (message.origin !== environment.popUpOrigin) {
-        return;
-      }
+  public login(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      window.addEventListener('message', (message) => {
+        if (message.origin !== environment.popUpOrigin) {
+          return;
+        }
+        this.closePopupWindow();
 
-      if (message.data) {
-        this.saveToken(message.data);
-      } else {
-        this.clearToken();
-        // TODO: show error
-      }
-      this.closePopupWindow();
-    }, {
-      once: true
+        if (message.data) {
+          this.saveUserInfo(message.data);
+          resolve();
+        } else {
+          this.clearUserInfo();
+          reject();
+          // TODO: show error
+        }
+      }, {
+        once: true
+      });
+
+      this.loginPopupWindowRef = window.open(
+        environment.oAuthData.url
+        + '/authorize/?client_id=' + environment.oAuthData.client_id
+        + '&redirect_uri=' + encodeURIComponent(environment.oAuthData.redirect_uri)
+        + '&scope=' + environment.oAuthData.scope
+      );
     });
+  }
 
-    this.loginPopupWindowRef = window.open(
-      environment.oAuthData.url
-      + '/authorize/?client_id=' + environment.oAuthData.client_id
-      + '&redirect_uri=' + encodeURIComponent(environment.oAuthData.redirect_uri)
-      + '&scope=' + environment.oAuthData.scope
-    );
+  public logout(): void {
+    this.clearUserInfo();
   }
 
   public exchangeCodeForToken(code: string): Observable<string> {
@@ -69,20 +79,22 @@ export class AuthService {
     return localStorage.getItem('token');
   }
 
-  public saveUserInfo(): Observable<User> {
-    return this.http.get('/api/user').pipe(
-      map((response: User) => {
-        return { avatar_url: response.avatar_url, login: response.login };
-      }),
-      tap( user => this.currentUser$.next(user))
-    );
+  public saveUser(): void {
+    this.http.get('/api/user').pipe(
+      map((response: User) => ({avatar_url: response.avatar_url, login: response.login}))
+    ).subscribe((user: User) => {
+      this.currentUser = user;
+      localStorage.setItem('userInfo', JSON.stringify(user));
+    });
   }
 
-  private saveToken(token: string): void {
+  private saveUserInfo(token: string): void {
     localStorage.setItem('token', token);
+    this.saveUser();
   }
 
-  private clearToken(): void {
-    localStorage.removeItem('item');
+  private clearUserInfo(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo');
   }
 }

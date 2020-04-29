@@ -1,0 +1,6 @@
+<p>repo-list works!</p>
+<div *ngFor="let repo of repos" (click)="selectRepo(repo)">
+  {{ repo.name }}
+</div>
+
+{{ errorMessage }}

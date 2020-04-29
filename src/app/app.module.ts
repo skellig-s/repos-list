@@ -10,7 +10,7 @@ import { StoreModule } from '@ngrx/store';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { CoreModule } from './core/core.module';
 import { HttpClientModule } from '@angular/common/http';
-import { httpInterceptorProviders } from './http-interceptors';
+import { httpInterceptorProviders } from './core/http-interceptors';
 
 @NgModule({
   imports: [

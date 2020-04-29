@@ -1,0 +1,13 @@
+<p>repo-container works!</p>
+<app-repo-list
+  [repos]="repos$ | async"
+  [errorMessage]="errorMessage$ | async"
+  (repoSelected)="onRepoSelected($event)"
+>
+</app-repo-list>
+
+<div></div>
+
+<app-repo-info
+  [currentRepo]="currentRepo$ | async"
+></app-repo-info>

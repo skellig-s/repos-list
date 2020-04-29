@@ -8,8 +8,12 @@ const appRoutes: Routes = [
   },
   {
     path: 'login',
-    loadChildren: () => import('./user/user.module').then( module => module.UserModule )},
-  { path: '**', component: WelcomeComponent }
+    loadChildren: () => import('./user/user.module').then(module => module.UserModule)
+  }, {
+    path: 'repos',
+    loadChildren: () => import('./repos/repos.module').then(m => m.RepoModule)
+  },
+  {path: '**', component: WelcomeComponent}
 ];
 
 @NgModule({
@@ -20,4 +24,5 @@ const appRoutes: Routes = [
     RouterModule
   ]
 })
-export class AppRoutingModule { }
+export class AppRoutingModule {
+}
