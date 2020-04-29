@@ -10,7 +10,6 @@ import { RepoEffects } from './state/repo.effects';
 import { RouterModule } from '@angular/router';
 
 
-
 @NgModule({
   declarations: [RepoContainerComponent, RepoListComponent, RepoInfoComponent],
   imports: [
@@ -22,4 +21,5 @@ import { RouterModule } from '@angular/router';
     EffectsModule.forFeature([RepoEffects])
   ]
 })
-export class RepoModule { }
+export class RepoModule {
+}

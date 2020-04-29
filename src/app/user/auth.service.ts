@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { User } from './user';
+import { Router } from '@angular/router';
 
 interface OAuthResponse {
   'access_token': string;
@@ -19,7 +20,8 @@ export class AuthService {
   loginPopupWindowRef: Window;
   currentUser: User;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient,
+              private router: Router) {
     const userInfo = localStorage.getItem('userInfo');
     this.currentUser = userInfo ? JSON.parse(userInfo) : null;
   }
@@ -81,7 +83,12 @@ export class AuthService {
 
   public saveUser(): void {
     this.http.get('/api/user').pipe(
-      map((response: User) => ({avatar_url: response.avatar_url, login: response.login}))
+      map((response: User) => ({avatar_url: response.avatar_url, login: response.login})),
+      catchError( (err) => {
+        this.clearUserInfo();
+        this.router.navigate(['/login']);
+        throw(err);
+      })
     ).subscribe((user: User) => {
       this.currentUser = user;
       localStorage.setItem('userInfo', JSON.stringify(user));

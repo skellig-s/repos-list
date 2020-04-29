@@ -14,13 +14,13 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.authService.currentUser) {
-      this.router.navigate(['repos']);
+      this.router.navigate(['/repos']);
     }
   }
 
   public onLogin(): void {
     this.authService.login().then( () => {
-      this.router.navigate(['repos']);
+      this.router.navigate(['/repos']);
       }, () => {
         console.log('Login error');
       }

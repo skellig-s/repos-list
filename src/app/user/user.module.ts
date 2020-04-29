@@ -12,14 +12,14 @@ import { StoreModule } from '@ngrx/store';
   declarations: [LoginComponent, RedirectComponent],
   imports: [
     CommonModule,
-    RouterModule.forChild([
-      { path: '', component: LoginComponent },
-      {
-        path: 'redirect',
-        component: RedirectComponent,
-        resolve: { access_token: RedirectResolver }
-      }
-    ]),
+    // RouterModule.forChild([
+    //   { path: '', component: LoginComponent },
+    //   {
+    //     path: 'redirect',
+    //     component: RedirectComponent,
+    //     resolve: { access_token: RedirectResolver }
+    //   }
+    // ]),
     StoreModule.forFeature('users', [])
   ]
 })

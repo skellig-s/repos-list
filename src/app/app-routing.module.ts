@@ -1,19 +1,23 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { WelcomeComponent } from './core/welcome/welcome.component';
+import { LoginComponent } from './user/login/login.component';
+import { AuthGuard } from './core/guards/auth.guard';
+import { RedirectComponent } from './user/redirect/redirect.component';
+import { RedirectResolver } from './user/redirect/redirect.resolver';
 
 const appRoutes: Routes = [
   {
-    path: '', component: WelcomeComponent
-  },
-  {
-    path: 'login',
-    loadChildren: () => import('./user/user.module').then(module => module.UserModule)
+    path: '', component: LoginComponent
+  }, {
+    path: 'login/redirect',
+    component: RedirectComponent,
+    resolve: { access_token: RedirectResolver }
   }, {
     path: 'repos',
-    loadChildren: () => import('./repos/repos.module').then(m => m.RepoModule)
+    loadChildren: () => import('./repos/repos.module').then(m => m.RepoModule),
+    canActivate: [AuthGuard]
   },
-  {path: '**', component: WelcomeComponent}
+  {path: '**', redirectTo: ''}
 ];
 
 @NgModule({

@@ -11,6 +11,7 @@ import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { CoreModule } from './core/core.module';
 import { HttpClientModule } from '@angular/common/http';
 import { httpInterceptorProviders } from './core/http-interceptors';
+import { UserModule } from './user/user.module';
 
 @NgModule({
   imports: [
@@ -23,7 +24,8 @@ import { httpInterceptorProviders } from './core/http-interceptors';
       maxAge: 25,
       logOnly: environment.production
     }),
-    CoreModule
+    CoreModule,
+    UserModule
   ],
   providers: [
     httpInterceptorProviders
