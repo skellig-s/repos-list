@@ -1,13 +1,19 @@
-<p>repo-container works!</p>
-<app-repo-list
-  [repos]="repos$ | async"
-  [errorMessage]="errorMessage$ | async"
-  (repoSelected)="onRepoSelected($event)"
->
-</app-repo-list>
+<div class="row">
+  <div class="col-md-4">
+    <app-repo-list
+      [repos]="repos$ | async"
+      [currentRepo]="currentRepo$ | async"
+      [errorMessage]="errorMessage$ | async"
+      (repoSelected)="onRepoSelected($event)"
+    >
+    </app-repo-list>
+  </div>
 
-<div></div>
+  <div class="col-md-8">
+    <app-repo-info
+      [currentRepo]="currentRepo$ | async"
+      (closeInfo)="onRepoClosed()"
+    ></app-repo-info>
+  </div>
 
-<app-repo-info
-  [currentRepo]="currentRepo$ | async"
-></app-repo-info>
+</div>

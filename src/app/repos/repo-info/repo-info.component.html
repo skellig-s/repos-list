@@ -1,4 +1,43 @@
-<p>repo-info works!</p>
-<p>{{ currentRepo?.name }}</p>
-<p>{{ currentRepo?.description }}</p>
-<p>{{ currentRepo?.contributors }}</p>
+
+<div class="card" *ngIf="currentRepo">
+  <div class="card-header">
+    {{ currentRepo.name }}
+  </div>
+
+  <div class="card-body">
+
+    <div class="form-group row">
+      <span class="col-md-4">Description:</span>
+      <div class="col-md-8">
+        {{ currentRepo.description }}
+      </div>
+    </div>
+
+    <div class="form-group row">
+      <span class="col-md-4">Created at:</span>
+      <div class="col-md-8">
+        {{ currentRepo.created_at | date: 'dd/MM/yyyy' }}
+      </div>
+    </div>
+
+    <div class="form-group row">
+      <span class="col-md-4">Contributors:</span>
+      <div class="col-md-8">
+        {{ currentRepo.contributors }}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="col-md-10 col-md-offset-2">
+        <span>
+          <button class="btn btn-primary" (click)="onCloseInfo()">
+            Close
+          </button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<!--<div *ngIf="errorMessage$ | async as errorMessage" class="alert alert-danger">-->
+<!--  Error: {{ errorMessage }}-->
+<!--</div>-->

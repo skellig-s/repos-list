@@ -8,12 +8,14 @@ import * as fromRepo from './state/repo.reducer';
 import { EffectsModule } from '@ngrx/effects';
 import { RepoEffects } from './state/repo.effects';
 import { RouterModule } from '@angular/router';
+import { SharedModule } from '../shared/shared.module';
 
 
 @NgModule({
   declarations: [RepoContainerComponent, RepoListComponent, RepoInfoComponent],
   imports: [
     CommonModule,
+    SharedModule,
     RouterModule.forChild([{
       path: '', component: RepoContainerComponent
     }]),

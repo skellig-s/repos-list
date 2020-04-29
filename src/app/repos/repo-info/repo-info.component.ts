@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Repo } from '../repo';
 
 @Component({
@@ -9,10 +9,16 @@ import { Repo } from '../repo';
 export class RepoInfoComponent implements OnInit {
 
   @Input() currentRepo: Repo;
+  @Output() closeInfo = new EventEmitter();
 
-  constructor() { }
+  constructor() {
+  }
 
   ngOnInit(): void {
+  }
+
+  public onCloseInfo(): void {
+    this.closeInfo.emit();
   }
 
 }

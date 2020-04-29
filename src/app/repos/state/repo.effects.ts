@@ -22,6 +22,7 @@ export class RepoEffects {
         repos: repos.map((repo) => ({
           id: repo.id,
           name: repo.name,
+          created_at: repo.created_at ? new Date(repo.created_at) : null,
           description: repo.description,
           contributors: []
         }))

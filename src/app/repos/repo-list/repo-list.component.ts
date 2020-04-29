@@ -9,6 +9,7 @@ import { Repo } from '../repo';
 export class RepoListComponent implements OnInit {
 
   @Input() repos: Repo[];
+  @Input() currentRepo: Repo;
   @Input() errorMessage: string;
   @Output() repoSelected = new EventEmitter<Repo>();
 

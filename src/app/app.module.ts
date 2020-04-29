@@ -12,10 +12,14 @@ import { CoreModule } from './core/core.module';
 import { HttpClientModule } from '@angular/common/http';
 import { httpInterceptorProviders } from './core/http-interceptors';
 import { UserModule } from './user/user.module';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { SharedModule } from './shared/shared.module';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 
 @NgModule({
   imports: [
     BrowserModule,
+    BrowserAnimationsModule,
     HttpClientModule,
     AppRoutingModule,
     StoreModule.forRoot({}),
@@ -25,6 +29,7 @@ import { UserModule } from './user/user.module';
       logOnly: environment.production
     }),
     CoreModule,
+    SharedModule,
     UserModule
   ],
   providers: [

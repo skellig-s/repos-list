@@ -3,7 +3,7 @@ import { select, Store } from '@ngrx/store';
 import { AppState } from '../state/repo.reducer';
 import { Observable } from 'rxjs';
 import { Repo } from '../repo';
-import { initializeRepos, setCurrentRepo } from '../state/repo.actions';
+import { cleanCurrentRepo, initializeRepos, setCurrentRepo } from '../state/repo.actions';
 import { selectCurrentRepo, selectRepos, selectReposError } from '../state';
 
 @Component({
@@ -30,5 +30,9 @@ export class RepoContainerComponent implements OnInit {
 
   public onRepoSelected(repo: Repo): void {
     this.store.dispatch(setCurrentRepo(repo));
+  }
+
+  public onRepoClosed(): void {
+    this.store.dispatch(cleanCurrentRepo());
   }
 }
