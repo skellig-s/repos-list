@@ -1,0 +1,186 @@
+.calendar-form {
+    /*transform: translateY(-100%);*/
+    /*position: absolute;*/
+    width: 415px;
+    font-size: 14px;
+    box-sizing: border-box;
+    box-shadow: 0 1px 5px 0 rgba(100,100,100, 0.3);
+    padding: 20px 15px 25px;
+    background: #fff;
+}
+
+.month-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin: 10px 15px 40px 15px;
+    align-items: center;
+}
+
+.month-name {
+    float: left;
+    color: #8b5abf;
+    box-sizing: border-box;
+    height: 16px;
+}
+.month-name:focus {
+    outline: none;
+    border-bottom: 1px solid #8b5abf;
+}
+.month-name:first-letter {
+    text-transform: uppercase;
+}
+
+.month-buttons-area {
+    display: flex;
+    font-size: 18px;
+}
+.month-button {
+    color: #8b5abf;
+    cursor: pointer;
+}
+.month-button:hover {
+    stroke-width: 2px;
+}
+.month-button-1 {
+    order: 1;
+    margin-right: 20px;
+}
+.month-button-2 {
+    order: 2;
+}
+
+.weekdays-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin: 0 35px;
+}
+
+.calendar-hr {
+    background: #c4c4c4;
+    border: none;
+    height: 1px;
+    margin: 10px 10px 20px 10px;
+}
+
+.days-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.week-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 20px;
+    margin-left: 20px;
+}
+
+.day-item {
+    font-size: 12px;
+    width: 36px;
+    height: 36px;
+    text-align: center;
+    margin: 6px 5px;
+}
+
+.day-item:focus {
+    outline: none;
+}
+
+.day-item:hover {
+    cursor: pointer;
+}
+
+.other-month-date {
+    opacity: 0.7;
+}
+
+.other-month-date svg text {
+    fill: #494545; /* #494545  with opacity .7 = #807d7d */
+}
+
+.selected {
+    background: #8b5abf;
+    border-radius: 30px;
+}
+.selected:hover, .tabbed {
+    box-shadow: 0 0 4px 0 #8b5abf;
+    border-radius: 50%;
+}
+.disabled-date svg text{
+    fill: #c4c4c4;
+}
+.disabled-date:hover {
+    cursor: default;
+}
+
+.days-table-change {
+    animation: changeMonth .4s 1;
+}
+
+@keyframes changeMonth {
+    from {opacity: 0; }
+    to { opacity: 1; }
+}
+
+.calendar-form {
+    /*position: absolute;*/
+    margin-top: -20px;
+    z-index: 6;
+}
+
+@media (max-width: 644px) { /* mobile */
+    .calendar-form {
+        max-width: 320px;
+    }
+    .weekdays-row {
+        justify-content: space-between;
+        margin: unset;
+    }
+    .calendar-hr {
+        width: 320px;
+        margin: 10px 0 20px -15px;
+    }
+    .days-table {
+        align-items: center;
+    }
+}
+
+@media (max-width: 340px) {
+    .calendar-form {
+        left: 0;
+    }
+}
+
+.svg-circle {
+
+}
+.day-item:hover .svg-circle {
+    display: block;
+}
+.circle {
+    display: none;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    transform: rotate(-90deg) translateX(-100%)
+}
+.day-item:hover .circle {
+    display: block;
+    animation: stroke 4s ease-out .1s forwards;
+}
+@keyframes stroke {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+
+.disabled-date:hover .circle {
+    display: none;
+}
+
+.selected svg text {
+    fill: #fff;
+}

@@ -1,0 +1,3667 @@
+{
+    "pipes": [],
+    "interfaces": [
+        {
+            "name": "AppState",
+            "id": "interface-AppState-90c156c1026ba0d7788f88032b854193",
+            "file": "src/app/state/app.state.ts",
+            "type": "interface",
+            "sourceCode": "export interface AppState {\n  user: any;\n}\n",
+            "properties": [
+                {
+                    "name": "user",
+                    "type": "any",
+                    "optional": false,
+                    "description": "",
+                    "line": 3
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        },
+        {
+            "name": "AppState",
+            "id": "interface-AppState-3eab5eabc2e3784df8a1be9eb32863f2-1",
+            "file": "src/app/repos/state/repo.reducer.ts",
+            "type": "interface",
+            "sourceCode": "import * as repoActions from './repo.actions';\nimport * as fromRoot from '../../state/app.state';\nimport { Repo } from '../repo';\nimport { Action, createReducer, on } from '@ngrx/store';\n\nexport const repoFeatureKey = 'repos';\n\nexport interface RepoState {\n  currentRepoId: number;\n  repos: Repo[];\n  error: string;\n}\n\nexport interface AppState extends fromRoot.AppState {\n  repos: RepoState;\n}\n\nexport const initialState: RepoState = {\n  currentRepoId: null,\n  repos: [],\n  error: ''\n};\n\nconst repoReducer = createReducer(\n  initialState,\n  on(repoActions.initializeReposSuccess, (state: RepoState, {repos}) => ({\n    ...state,\n    repos,\n    error: ''\n  })),\n  on(repoActions.initializeReposFail, (state: RepoState, {error}) => ({\n    ...state,\n    repos: [],\n    error\n  })),\n  on(repoActions.setCurrentRepo, (state: RepoState, currentRepo: Repo) => {\n    return {\n      ...state,\n      currentRepoId: currentRepo.id\n    };\n  }),\n  on(repoActions.enrichCurrentRepo, (state: RepoState, {contributors}) => {\n    const newRepos = state.repos.map((repo) =>\n      repo.id === state.currentRepoId ? {\n          ...repo,\n          contributors\n        }\n        : repo\n    );\n    return {\n      ...state,\n      repos: newRepos\n    };\n  }),\n  // on(repoActions.enrichCurrentRepoFail, (state: RepoState, {error}) => {\n  //   const newRepos = state.repos.map((repo) =>\n  //     repo.id === state.currentRepoId ? {\n  //         ...repo,\n  //         contributors\n  //       }\n  //       : repo\n  //   );\n  //   return {...\n  //     state;\n  //   };\n  // }),\n  on(repoActions.cleanCurrentRepo, (state: RepoState) => ({\n    ...state,\n    currentRepoId: null\n  }))\n);\n\nexport function reducer(state: RepoState | undefined, action: Action): RepoState {\n  return repoReducer(state, action);\n}\n",
+            "properties": [
+                {
+                    "name": "repos",
+                    "type": "RepoState",
+                    "optional": false,
+                    "description": "",
+                    "line": 15
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": [],
+            "isDuplicate": true,
+            "duplicateId": 1,
+            "duplicateName": "AppState-1"
+        },
+        {
+            "name": "AppState",
+            "id": "interface-AppState-a2c46431e1000050ef7d69573a76c7a1-2",
+            "file": "src/app/user/state/user.reducer.ts",
+            "type": "interface",
+            "sourceCode": "import * as fromRoot from '../../state/app.state';\nimport { User } from '../user';\n\nexport const userFeatureKey = 'user';\n\nexport interface UserState {\n  currentUser: User;\n}\n\nexport interface AppState extends fromRoot.AppState {\n  user: UserState;\n}\n\nexport const initialState: UserState = {\n  currentUser: null\n};\n\n",
+            "properties": [
+                {
+                    "name": "user",
+                    "type": "UserState",
+                    "optional": false,
+                    "description": "",
+                    "line": 11
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": [],
+            "isDuplicate": true,
+            "duplicateId": 2,
+            "duplicateName": "AppState-2"
+        },
+        {
+            "name": "OAuthResponse",
+            "id": "interface-OAuthResponse-3fe541a7d05b5769d28efce7a11bae15",
+            "file": "src/app/user/auth.service.ts",
+            "type": "interface",
+            "sourceCode": "import { Injectable } from '@angular/core';\nimport { HttpClient, HttpHeaders } from '@angular/common/http';\nimport { environment } from '../../environments/environment';\nimport { Observable, of, throwError } from 'rxjs';\nimport { catchError, map } from 'rxjs/operators';\nimport { User } from './user';\nimport { Router } from '@angular/router';\n\ninterface OAuthResponse {\n  'access_token': string;\n  'scope': string;\n  'token_type': string;\n}\n\n@Injectable({\n  providedIn: 'root'\n})\nexport class AuthService {\n\n  loginPopupWindowRef: Window;\n  currentUser: User;\n\n  constructor(private http: HttpClient,\n              private router: Router) {\n    const userInfo = localStorage.getItem('userInfo');\n    this.currentUser = userInfo ? JSON.parse(userInfo) : null;\n  }\n\n  public login(): Promise<void> {\n    return new Promise((resolve, reject) => {\n      window.addEventListener('message', (message) => {\n        if (message.origin !== environment.popUpOrigin) {\n          return;\n        }\n        this.closePopupWindow();\n\n        if (message.data) {\n          this.saveUserInfo(message.data);\n          resolve();\n        } else {\n          this.clearUserInfo();\n          reject();\n          // TODO: show error\n        }\n      }, {\n        once: true\n      });\n\n      this.loginPopupWindowRef = window.open(\n        environment.oAuthData.url\n        + '/authorize/?client_id=' + environment.oAuthData.client_id\n        + '&redirect_uri=' + encodeURIComponent(environment.oAuthData.redirect_uri)\n        + '&scope=' + environment.oAuthData.scope\n      );\n    });\n  }\n\n  public logout(): void {\n    this.clearUserInfo();\n  }\n\n  public exchangeCodeForToken(code: string): Observable<string> {\n    return this.http.post(`${environment.oAuthData.url}/access_token`, {\n      client_id: environment.oAuthData.client_id,\n      client_secret: environment.oAuthData.client_secret,\n      code\n    }, {\n      headers: new HttpHeaders({\n        Accept: 'application/json'\n      })\n    }).pipe(\n      map((response: OAuthResponse) => response.access_token)\n    );\n  }\n\n  public closePopupWindow(): void {\n    this.loginPopupWindowRef.close();\n  }\n\n  public getToken(): string {\n    return localStorage.getItem('token');\n  }\n\n  public saveUser(): void {\n    this.http.get('/api/user').pipe(\n      map((response: User) => ({avatar_url: response.avatar_url, login: response.login})),\n      catchError( (err) => {\n        this.clearUserInfo();\n        this.router.navigate(['/login']);\n        throw(err);\n      })\n    ).subscribe((user: User) => {\n      this.currentUser = user;\n      localStorage.setItem('userInfo', JSON.stringify(user));\n    });\n  }\n\n  private saveUserInfo(token: string): void {\n    localStorage.setItem('token', token);\n    this.saveUser();\n  }\n\n  private clearUserInfo(): void {\n    localStorage.removeItem('token');\n    localStorage.removeItem('userInfo');\n  }\n}\n",
+            "properties": [
+                {
+                    "name": "access_token",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 10
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 11
+                },
+                {
+                    "name": "token_type",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 12
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        },
+        {
+            "name": "Repo",
+            "id": "interface-Repo-f446075d772b58168d937fe69e86e87b",
+            "file": "src/app/repos/repo.ts",
+            "type": "interface",
+            "sourceCode": "export interface Repo {\n  id: number | null;\n  name: string;\n  created_at: Date;\n  description: string;\n  contributors?: string[];\n}\n",
+            "properties": [
+                {
+                    "name": "contributors",
+                    "type": "string[]",
+                    "optional": true,
+                    "description": "",
+                    "line": 7
+                },
+                {
+                    "name": "created_at",
+                    "type": "Date",
+                    "optional": false,
+                    "description": "",
+                    "line": 5
+                },
+                {
+                    "name": "description",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 6
+                },
+                {
+                    "name": "id",
+                    "type": "number | null",
+                    "optional": false,
+                    "description": "",
+                    "line": 3
+                },
+                {
+                    "name": "name",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 4
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        },
+        {
+            "name": "RepoState",
+            "id": "interface-RepoState-3eab5eabc2e3784df8a1be9eb32863f2",
+            "file": "src/app/repos/state/repo.reducer.ts",
+            "type": "interface",
+            "sourceCode": "import * as repoActions from './repo.actions';\nimport * as fromRoot from '../../state/app.state';\nimport { Repo } from '../repo';\nimport { Action, createReducer, on } from '@ngrx/store';\n\nexport const repoFeatureKey = 'repos';\n\nexport interface RepoState {\n  currentRepoId: number;\n  repos: Repo[];\n  error: string;\n}\n\nexport interface AppState extends fromRoot.AppState {\n  repos: RepoState;\n}\n\nexport const initialState: RepoState = {\n  currentRepoId: null,\n  repos: [],\n  error: ''\n};\n\nconst repoReducer = createReducer(\n  initialState,\n  on(repoActions.initializeReposSuccess, (state: RepoState, {repos}) => ({\n    ...state,\n    repos,\n    error: ''\n  })),\n  on(repoActions.initializeReposFail, (state: RepoState, {error}) => ({\n    ...state,\n    repos: [],\n    error\n  })),\n  on(repoActions.setCurrentRepo, (state: RepoState, currentRepo: Repo) => {\n    return {\n      ...state,\n      currentRepoId: currentRepo.id\n    };\n  }),\n  on(repoActions.enrichCurrentRepo, (state: RepoState, {contributors}) => {\n    const newRepos = state.repos.map((repo) =>\n      repo.id === state.currentRepoId ? {\n          ...repo,\n          contributors\n        }\n        : repo\n    );\n    return {\n      ...state,\n      repos: newRepos\n    };\n  }),\n  // on(repoActions.enrichCurrentRepoFail, (state: RepoState, {error}) => {\n  //   const newRepos = state.repos.map((repo) =>\n  //     repo.id === state.currentRepoId ? {\n  //         ...repo,\n  //         contributors\n  //       }\n  //       : repo\n  //   );\n  //   return {...\n  //     state;\n  //   };\n  // }),\n  on(repoActions.cleanCurrentRepo, (state: RepoState) => ({\n    ...state,\n    currentRepoId: null\n  }))\n);\n\nexport function reducer(state: RepoState | undefined, action: Action): RepoState {\n  return repoReducer(state, action);\n}\n",
+            "properties": [
+                {
+                    "name": "currentRepoId",
+                    "type": "number",
+                    "optional": false,
+                    "description": "",
+                    "line": 9
+                },
+                {
+                    "name": "error",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 11
+                },
+                {
+                    "name": "repos",
+                    "type": "Repo[]",
+                    "optional": false,
+                    "description": "",
+                    "line": 10
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        },
+        {
+            "name": "User",
+            "id": "interface-User-da6ff0ddf25d996f7b857b6ccbb94313",
+            "file": "src/app/user/user.ts",
+            "type": "interface",
+            "sourceCode": "export interface User {\n  login: string;\n  avatar_url: string;\n}\n",
+            "properties": [
+                {
+                    "name": "avatar_url",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 4
+                },
+                {
+                    "name": "login",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 3
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        },
+        {
+            "name": "UserState",
+            "id": "interface-UserState-a2c46431e1000050ef7d69573a76c7a1",
+            "file": "src/app/user/state/user.reducer.ts",
+            "type": "interface",
+            "sourceCode": "import * as fromRoot from '../../state/app.state';\nimport { User } from '../user';\n\nexport const userFeatureKey = 'user';\n\nexport interface UserState {\n  currentUser: User;\n}\n\nexport interface AppState extends fromRoot.AppState {\n  user: UserState;\n}\n\nexport const initialState: UserState = {\n  currentUser: null\n};\n\n",
+            "properties": [
+                {
+                    "name": "currentUser",
+                    "type": "User",
+                    "optional": false,
+                    "description": "",
+                    "line": 7
+                }
+            ],
+            "indexSignatures": [],
+            "kind": 150,
+            "methods": []
+        }
+    ],
+    "injectables": [
+        {
+            "name": "AuthService",
+            "id": "injectable-AuthService-3fe541a7d05b5769d28efce7a11bae15",
+            "file": "src/app/user/auth.service.ts",
+            "properties": [
+                {
+                    "name": "currentUser",
+                    "type": "User",
+                    "optional": false,
+                    "description": "",
+                    "line": 21
+                },
+                {
+                    "name": "loginPopupWindowRef",
+                    "type": "Window",
+                    "optional": false,
+                    "description": "",
+                    "line": 20
+                }
+            ],
+            "methods": [
+                {
+                    "name": "clearUserInfo",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 103,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "closePopupWindow",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 76,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "exchangeCodeForToken",
+                    "args": [
+                        {
+                            "name": "code",
+                            "type": "string"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "Observable<string>",
+                    "typeParameters": [],
+                    "line": 62,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "code",
+                            "type": "string",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "getToken",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "string",
+                    "typeParameters": [],
+                    "line": 80,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "login",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "Promise<void>",
+                    "typeParameters": [],
+                    "line": 29,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "logout",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 58,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "saveUser",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 84,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "saveUserInfo",
+                    "args": [
+                        {
+                            "name": "token",
+                            "type": "string"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 98,
+                    "modifierKind": [
+                        112
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "token",
+                            "type": "string",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "",
+            "sourceCode": "import { Injectable } from '@angular/core';\nimport { HttpClient, HttpHeaders } from '@angular/common/http';\nimport { environment } from '../../environments/environment';\nimport { Observable, of, throwError } from 'rxjs';\nimport { catchError, map } from 'rxjs/operators';\nimport { User } from './user';\nimport { Router } from '@angular/router';\n\ninterface OAuthResponse {\n  'access_token': string;\n  'scope': string;\n  'token_type': string;\n}\n\n@Injectable({\n  providedIn: 'root'\n})\nexport class AuthService {\n\n  loginPopupWindowRef: Window;\n  currentUser: User;\n\n  constructor(private http: HttpClient,\n              private router: Router) {\n    const userInfo = localStorage.getItem('userInfo');\n    this.currentUser = userInfo ? JSON.parse(userInfo) : null;\n  }\n\n  public login(): Promise<void> {\n    return new Promise((resolve, reject) => {\n      window.addEventListener('message', (message) => {\n        if (message.origin !== environment.popUpOrigin) {\n          return;\n        }\n        this.closePopupWindow();\n\n        if (message.data) {\n          this.saveUserInfo(message.data);\n          resolve();\n        } else {\n          this.clearUserInfo();\n          reject();\n          // TODO: show error\n        }\n      }, {\n        once: true\n      });\n\n      this.loginPopupWindowRef = window.open(\n        environment.oAuthData.url\n        + '/authorize/?client_id=' + environment.oAuthData.client_id\n        + '&redirect_uri=' + encodeURIComponent(environment.oAuthData.redirect_uri)\n        + '&scope=' + environment.oAuthData.scope\n      );\n    });\n  }\n\n  public logout(): void {\n    this.clearUserInfo();\n  }\n\n  public exchangeCodeForToken(code: string): Observable<string> {\n    return this.http.post(`${environment.oAuthData.url}/access_token`, {\n      client_id: environment.oAuthData.client_id,\n      client_secret: environment.oAuthData.client_secret,\n      code\n    }, {\n      headers: new HttpHeaders({\n        Accept: 'application/json'\n      })\n    }).pipe(\n      map((response: OAuthResponse) => response.access_token)\n    );\n  }\n\n  public closePopupWindow(): void {\n    this.loginPopupWindowRef.close();\n  }\n\n  public getToken(): string {\n    return localStorage.getItem('token');\n  }\n\n  public saveUser(): void {\n    this.http.get('/api/user').pipe(\n      map((response: User) => ({avatar_url: response.avatar_url, login: response.login})),\n      catchError( (err) => {\n        this.clearUserInfo();\n        this.router.navigate(['/login']);\n        throw(err);\n      })\n    ).subscribe((user: User) => {\n      this.currentUser = user;\n      localStorage.setItem('userInfo', JSON.stringify(user));\n    });\n  }\n\n  private saveUserInfo(token: string): void {\n    localStorage.setItem('token', token);\n    this.saveUser();\n  }\n\n  private clearUserInfo(): void {\n    localStorage.removeItem('token');\n    localStorage.removeItem('userInfo');\n  }\n}\n",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "http",
+                        "type": "HttpClient"
+                    },
+                    {
+                        "name": "router",
+                        "type": "Router"
+                    }
+                ],
+                "line": 21,
+                "jsdoctags": [
+                    {
+                        "name": "http",
+                        "type": "HttpClient",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "router",
+                        "type": "Router",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "type": "injectable"
+        },
+        {
+            "name": "RepoEffects",
+            "id": "injectable-RepoEffects-55938e85e582495cb46dbc71505c7b5e",
+            "file": "src/app/repos/state/repo.effects.ts",
+            "properties": [
+                {
+                    "name": "initializeRepos$",
+                    "defaultValue": "createEffect(() => this.actions$.pipe(\n    ofType(RepoActionTypes.initializeRepos),\n    mergeMap(() => this.repoService.getRepos().pipe(\n      map((repos: Repo[]) => initializeReposSuccess({\n        repos: repos.map((repo) => ({\n          id: repo.id,\n          name: repo.name,\n          created_at: repo.created_at ? new Date(repo.created_at) : null,\n          description: repo.description,\n          contributors: []\n        }))\n      })),\n      catchError(error => of(initializeReposFail({error: error.error.message})))\n    ))\n  ))",
+                    "type": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 18
+                },
+                {
+                    "name": "setCurrentRepos$",
+                    "defaultValue": "createEffect(() => this.actions$.pipe(\n    ofType(RepoActionTypes.setCurrentRepo),\n    filter((repo: Repo) => !repo.contributors.length),\n    mergeMap((repo: Repo) =>\n        this.repoService.getRepoContributors(this.authService.currentUser.login, repo.name).pipe(\n          map((contributors: { login: string }[]) => enrichCurrentRepo(\n            {contributors: contributors.map(contributor => contributor.login)}\n          )),\n          catchError(error => of(enrichCurrentRepoFail({error})))\n        )\n    )\n  ))",
+                    "type": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 34
+                }
+            ],
+            "methods": [],
+            "description": "",
+            "sourceCode": "import { Injectable } from '@angular/core';\nimport { Actions, createEffect, ofType } from '@ngrx/effects';\nimport { enrichCurrentRepo, enrichCurrentRepoFail, initializeReposFail, initializeReposSuccess, RepoActionTypes } from './repo.actions';\nimport { catchError, filter, map, mergeMap, tap } from 'rxjs/operators';\nimport { RepoService } from '../repo.service';\nimport { Repo } from '../repo';\nimport { of } from 'rxjs';\nimport { AuthService } from '../../user/auth.service';\n\n@Injectable()\nexport class RepoEffects {\n\n  constructor(private actions$: Actions,\n              private authService: AuthService,\n              private repoService: RepoService) {\n  }\n\n  initializeRepos$ = createEffect(() => this.actions$.pipe(\n    ofType(RepoActionTypes.initializeRepos),\n    mergeMap(() => this.repoService.getRepos().pipe(\n      map((repos: Repo[]) => initializeReposSuccess({\n        repos: repos.map((repo) => ({\n          id: repo.id,\n          name: repo.name,\n          created_at: repo.created_at ? new Date(repo.created_at) : null,\n          description: repo.description,\n          contributors: []\n        }))\n      })),\n      catchError(error => of(initializeReposFail({error: error.error.message})))\n    ))\n  ));\n\n  setCurrentRepos$ = createEffect(() => this.actions$.pipe(\n    ofType(RepoActionTypes.setCurrentRepo),\n    filter((repo: Repo) => !repo.contributors.length),\n    mergeMap((repo: Repo) =>\n        this.repoService.getRepoContributors(this.authService.currentUser.login, repo.name).pipe(\n          map((contributors: { login: string }[]) => enrichCurrentRepo(\n            {contributors: contributors.map(contributor => contributor.login)}\n          )),\n          catchError(error => of(enrichCurrentRepoFail({error})))\n        )\n    )\n  ));\n}\n",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "actions$",
+                        "type": "Actions"
+                    },
+                    {
+                        "name": "authService",
+                        "type": "AuthService"
+                    },
+                    {
+                        "name": "repoService",
+                        "type": "RepoService"
+                    }
+                ],
+                "line": 11,
+                "jsdoctags": [
+                    {
+                        "name": "actions$",
+                        "type": "Actions",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "authService",
+                        "type": "AuthService",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "repoService",
+                        "type": "RepoService",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "type": "injectable"
+        },
+        {
+            "name": "RepoService",
+            "id": "injectable-RepoService-b3c275d40dedc9116fdd4868da362469",
+            "file": "src/app/repos/repo.service.ts",
+            "properties": [],
+            "methods": [
+                {
+                    "name": "getRepoContributors",
+                    "args": [
+                        {
+                            "name": "owner",
+                            "type": "string"
+                        },
+                        {
+                            "name": "repo",
+                            "type": "string"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "Observable<any>",
+                    "typeParameters": [],
+                    "line": 17,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "owner",
+                            "type": "string",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "repo",
+                            "type": "string",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "getRepos",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "Observable<any>",
+                    "typeParameters": [],
+                    "line": 13,
+                    "modifierKind": [
+                        114
+                    ]
+                }
+            ],
+            "description": "",
+            "sourceCode": "import { Injectable } from '@angular/core';\nimport { Observable, of } from 'rxjs';\nimport { HttpClient } from '@angular/common/http';\n\n@Injectable({\n  providedIn: 'root'\n})\nexport class RepoService {\n\n  constructor(private http: HttpClient) {\n  }\n\n  public getRepos(): Observable<any> {\n    return this.http.get('/api/user/repos');\n  }\n\n  public getRepoContributors(owner: string, repo: string): Observable<any> {\n    return this.http.get(`/api/repos/${owner}/${repo}/contributors`);\n  }\n}\n",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "http",
+                        "type": "HttpClient"
+                    }
+                ],
+                "line": 8,
+                "jsdoctags": [
+                    {
+                        "name": "http",
+                        "type": "HttpClient",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "type": "injectable"
+        }
+    ],
+    "classes": [
+        {
+            "name": "AppPage",
+            "id": "class-AppPage-a0db91bfa3b9914e9048612074084ee6",
+            "file": "e2e/src/app.po.ts",
+            "type": "class",
+            "sourceCode": "import { browser, by, element } from 'protractor';\n\nexport class AppPage {\n  navigateTo(): Promise<unknown> {\n    return browser.get(browser.baseUrl) as Promise<unknown>;\n  }\n\n  getTitleText(): Promise<string> {\n    return element(by.css('app-root .content span')).getText() as Promise<string>;\n  }\n}\n",
+            "properties": [],
+            "methods": [
+                {
+                    "name": "getTitleText",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "Promise<string>",
+                    "typeParameters": [],
+                    "line": 8
+                },
+                {
+                    "name": "navigateTo",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "Promise<unknown>",
+                    "typeParameters": [],
+                    "line": 4
+                }
+            ],
+            "indexSignatures": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "hostBindings": [],
+            "hostListeners": []
+        }
+    ],
+    "directives": [],
+    "components": [
+        {
+            "name": "AppComponent",
+            "id": "component-AppComponent-fe5e736ea488195dae9e43b5b4ec1986",
+            "file": "src/app/app.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-root",
+            "styleUrls": [
+                "./app.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./app.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "propertiesClass": [
+                {
+                    "name": "obj",
+                    "type": "Omit<literal type | b>",
+                    "optional": false,
+                    "description": "",
+                    "line": 10,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "selectedDate",
+                    "defaultValue": "new FormControl(new Date())",
+                    "type": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 12
+                },
+                {
+                    "name": "title",
+                    "defaultValue": "'repos-list'",
+                    "type": "string",
+                    "optional": false,
+                    "description": "",
+                    "line": 11
+                }
+            ],
+            "methodsClass": [],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component } from '@angular/core';\nimport { FormControl } from '@angular/forms';\n\n@Component({\n  selector: 'app-root',\n  templateUrl: './app.component.html',\n  styleUrls: ['./app.component.scss']\n})\nexport class AppComponent {\n  private obj: Omit<{a: string, b: string }, 'b'>;\n  title = 'repos-list';\n  selectedDate = new FormControl(new Date());\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./app.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "templateData": "<app-calendar-field [formControl]=\"selectedDate\"></app-calendar-field>\n\n<div class='container main-content'>\n  <router-outlet></router-outlet>\n</div>\n"
+        },
+        {
+            "name": "ButtonComponent",
+            "id": "component-ButtonComponent-642c6c4e474cd5a0ac760dfda26b2fc9",
+            "file": "src/stories/Button/button.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "storybook-button",
+            "styleUrls": [
+                "./button.css"
+            ],
+            "styles": [],
+            "template": "<button   type=\"button\"\n   (click)=\"onClick.emit($event)\"\n   [ngClass]=\"classes\"\n   [ngStyle]=\"{ 'background-color': backgroundColor }\"\n >\n   {{ label }}\n </button>",
+            "templateUrl": [],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "backgroundColor",
+                    "description": "<p>What background color to use</p>\n",
+                    "line": 26,
+                    "type": "string"
+                },
+                {
+                    "name": "label",
+                    "defaultValue": "'Button'",
+                    "description": "<p>Button contents</p>\n",
+                    "line": 40
+                },
+                {
+                    "name": "primary",
+                    "defaultValue": "false",
+                    "description": "<p>Is this the principal call to action on the page?</p>\n",
+                    "line": 20
+                },
+                {
+                    "name": "size",
+                    "defaultValue": "'medium'",
+                    "description": "<p>How large should the button be?</p>\n",
+                    "line": 32,
+                    "type": "\"small\" | \"medium\" | \"large\""
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "onClick",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "description": "<p>Optional click handler</p>\n",
+                    "line": 46,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, Input, Output, EventEmitter } from '@angular/core';\n\n@Component({\n  selector: 'storybook-button',\n  template: ` <button\n    type=\"button\"\n    (click)=\"onClick.emit($event)\"\n    [ngClass]=\"classes\"\n    [ngStyle]=\"{ 'background-color': backgroundColor }\"\n  >\n    {{ label }}\n  </button>`,\n  styleUrls: ['./button.css'],\n})\nexport default class ButtonComponent {\n  /**\n   * Is this the principal call to action on the page?\n   */\n  @Input()\n  primary = false;\n\n  /**\n   * What background color to use\n   */\n  @Input()\n  backgroundColor?: string;\n\n  /**\n   * How large should the button be?\n   */\n  @Input()\n  size: 'small' | 'medium' | 'large' = 'medium';\n\n  /**\n   * Button contents\n   *\n   * @required\n   */\n  @Input()\n  label = 'Button';\n\n  /**\n   * Optional click handler\n   */\n  @Output()\n  onClick = new EventEmitter<Event>();\n\n  public get classes(): string[] {\n    const mode = this.primary ? 'storybook-button--primary' : 'storybook-button--secondary';\n\n    return ['storybook-button', `storybook-button--${this.size}`, mode];\n  }\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".storybook-button {\n  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;\n  font-weight: 700;\n  border: 0;\n  border-radius: 3em;\n  cursor: pointer;\n  display: inline-block;\n  line-height: 1;\n}\n.storybook-button--primary {\n  color: white;\n  background-color: #1ea7fd;\n}\n.storybook-button--secondary {\n  color: #333;\n  background-color: transparent;\n  box-shadow: rgba(0, 0, 0, 0.15) 0px 0px 0px 1px inset;\n}\n.storybook-button--small {\n  font-size: 12px;\n  padding: 10px 16px;\n}\n.storybook-button--medium {\n  font-size: 14px;\n  padding: 11px 20px;\n}\n.storybook-button--large {\n  font-size: 16px;\n  padding: 12px 24px;\n}\n",
+                    "styleUrl": "./button.css"
+                }
+            ],
+            "stylesData": "",
+            "accessors": {
+                "classes": {
+                    "name": "classes",
+                    "getSignature": {
+                        "name": "classes",
+                        "type": "[]",
+                        "returnType": "string[]",
+                        "line": 48
+                    }
+                }
+            }
+        },
+        {
+            "name": "CalendarFieldComponent",
+            "id": "component-CalendarFieldComponent-8ddc0b7c403b57653a919df61d8ebcc8",
+            "file": "src/stories/calendar-field/calendar-field.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [
+                {
+                    "name": "{\n    provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => CalendarFieldComponent), multi: true\n}",
+                    "type": "component"
+                }
+            ],
+            "selector": "app-calendar-field",
+            "styleUrls": [
+                "./calendar-field.component.css"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./calendar-field.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "defaultDate",
+                    "line": 19,
+                    "type": "Date"
+                },
+                {
+                    "name": "minDate",
+                    "defaultValue": "new Date()",
+                    "line": 23,
+                    "type": "Date"
+                },
+                {
+                    "name": "selectMode",
+                    "defaultValue": "'single'",
+                    "line": 21
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "selected",
+                    "defaultValue": "new EventEmitter<Date>()",
+                    "line": 26,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [
+                {
+                    "name": "currentMonth",
+                    "type": "Date",
+                    "optional": false,
+                    "description": "",
+                    "line": 28,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "daysOnPage",
+                    "type": "number",
+                    "optional": false,
+                    "description": "",
+                    "line": 37,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "isChangingMonth",
+                    "type": "boolean",
+                    "optional": false,
+                    "description": "",
+                    "line": 30,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "isDisabledState",
+                    "type": "boolean",
+                    "optional": false,
+                    "description": "",
+                    "line": 31,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "minDateFirstMonthDay",
+                    "type": "Date",
+                    "optional": false,
+                    "description": "",
+                    "line": 32,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "monthDays",
+                    "type": "Date[]",
+                    "optional": false,
+                    "description": "",
+                    "line": 34,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "onChange",
+                    "defaultValue": "() => {...}",
+                    "type": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 56
+                },
+                {
+                    "name": "onTouch",
+                    "defaultValue": "() => {...}",
+                    "type": "",
+                    "optional": false,
+                    "description": "",
+                    "line": 57
+                },
+                {
+                    "name": "selectedDay",
+                    "defaultValue": "null",
+                    "type": "Date",
+                    "optional": false,
+                    "description": "",
+                    "line": 29,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "selectedDayIndex",
+                    "type": "number",
+                    "optional": false,
+                    "description": "",
+                    "line": 38,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "weekDays",
+                    "defaultValue": "[ 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс' ]",
+                    "type": "[]",
+                    "optional": false,
+                    "description": "",
+                    "line": 36,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "weeks",
+                    "defaultValue": "[]",
+                    "type": "Date[][]",
+                    "optional": false,
+                    "description": "",
+                    "line": 35,
+                    "modifierKind": [
+                        114
+                    ]
+                }
+            ],
+            "methodsClass": [
+                {
+                    "name": "changeFocus",
+                    "args": [
+                        {
+                            "name": "diff",
+                            "type": "number"
+                        },
+                        {
+                            "name": "event",
+                            "type": "Event"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 185,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "diff",
+                            "type": "number",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "event",
+                            "type": "Event",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "getDaysInMonth",
+                    "args": [
+                        {
+                            "name": "date",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "number",
+                    "typeParameters": [],
+                    "line": 135,
+                    "modifierKind": [
+                        112
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "date",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "isDisabled",
+                    "args": [
+                        {
+                            "name": "day",
+                            "type": ""
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "boolean",
+                    "typeParameters": [],
+                    "line": 131,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "day",
+                            "type": "",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "isSelected",
+                    "args": [
+                        {
+                            "name": "date",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "boolean",
+                    "typeParameters": [],
+                    "line": 111,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "date",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "isSelectedMonth",
+                    "args": [
+                        {
+                            "name": "date",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "boolean",
+                    "typeParameters": [],
+                    "line": 122,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "date",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "nextMonth",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 141,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 42
+                },
+                {
+                    "name": "prevMonth",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "boolean",
+                    "typeParameters": [],
+                    "line": 146,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "refreshCalendar",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 158,
+                    "modifierKind": [
+                        112
+                    ]
+                },
+                {
+                    "name": "registerOnChange",
+                    "args": [
+                        {
+                            "name": "fn",
+                            "type": "any"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 59,
+                    "jsdoctags": [
+                        {
+                            "name": "fn",
+                            "type": "any",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "registerOnTouched",
+                    "args": [
+                        {
+                            "name": "fn",
+                            "type": "any"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 62,
+                    "jsdoctags": [
+                        {
+                            "name": "fn",
+                            "type": "any",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "selectDay",
+                    "args": [
+                        {
+                            "name": "day",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "boolean",
+                    "typeParameters": [],
+                    "line": 97,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "day",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "selectDayByEnter",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 89,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "selectDayOnClick",
+                    "args": [
+                        {
+                            "name": "day",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 82,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "day",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "setDisabledState",
+                    "args": [
+                        {
+                            "name": "isDisabled",
+                            "type": "boolean"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 78,
+                    "jsdoctags": [
+                        {
+                            "name": "isDisabled",
+                            "type": "boolean",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "writeValue",
+                    "args": [
+                        {
+                            "name": "day",
+                            "type": "Date"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 66,
+                    "jsdoctags": [
+                        {
+                            "name": "day",
+                            "type": "Date",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, EventEmitter, forwardRef, Input, OnInit, Output } from '@angular/core';\r\nimport { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';\r\n\r\n@Component({\r\n  selector: 'app-calendar-field',\r\n  templateUrl: './calendar-field.component.html',\r\n  styleUrls: ['./calendar-field.component.css'],\r\n    providers: [\r\n        {\r\n            provide: NG_VALUE_ACCESSOR,\r\n            useExisting: forwardRef(() => CalendarFieldComponent),\r\n            multi: true\r\n        }\r\n    ]\r\n})\r\nexport default class CalendarFieldComponent implements OnInit, ControlValueAccessor {\r\n    // calendar parameters\r\n    @Input()\r\n    public defaultDate: Date;\r\n    @Input()\r\n    public selectMode = 'single';\r\n    @Input()\r\n    public minDate: Date = new Date();\r\n\r\n    @Output()\r\n    public selected = new EventEmitter<Date>();\r\n\r\n    public currentMonth: Date;\r\n    private selectedDay: Date = null;\r\n    public isChangingMonth: boolean;\r\n    public isDisabledState: boolean;\r\n    private minDateFirstMonthDay: Date;\r\n\r\n    public monthDays: Date[];\r\n    public weeks: Date[][] = [];\r\n    public weekDays = [ 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс' ];\r\n    private daysOnPage: number;\r\n    public selectedDayIndex: number;\r\n\r\n    constructor() { }\r\n\r\n    ngOnInit() {\r\n        this.currentMonth = new Date();\r\n        this.currentMonth.setHours(0, 0, 0, 0);\r\n        this.minDateFirstMonthDay = new Date(this.minDate);\r\n        this.minDateFirstMonthDay.setDate(1);\r\n        this.minDateFirstMonthDay.setHours(0, 0, 0, 0);\r\n        this.minDate.setHours(0, 0, 0, -1);\r\n        if (this.defaultDate) {\r\n            this.selectedDay = this.defaultDate;\r\n        } else {\r\n            this.selectedDay = new Date();\r\n        }\r\n    }\r\n\r\n    onChange = (_: any) => {};\r\n    onTouch = () => {};\r\n\r\n    registerOnChange(fn: any) {\r\n        this.onChange = fn;\r\n    }\r\n    registerOnTouched(fn: any) {\r\n        this.onTouch = fn;\r\n    }\r\n\r\n    writeValue(day: Date) {\r\n        if (!day) {\r\n            this.currentMonth = new Date();\r\n            this.currentMonth.setHours(0, 0, 0, 0);\r\n        } else {\r\n            if (!this.isSelected(day)) {\r\n                this.selectDay(day);\r\n            }\r\n        }\r\n        this.refreshCalendar();\r\n    }\r\n\r\n    setDisabledState(isDisabled: boolean) {\r\n        this.isDisabledState = isDisabled;\r\n    }\r\n\r\n    public selectDayOnClick(day: Date) {\r\n        if (this.selectDay(day)) {\r\n            this.onChange(this.selectedDay);\r\n            this.selected.emit(this.selectedDay);\r\n        }\r\n    }\r\n\r\n    public selectDayByEnter() {\r\n        if (this.selectedDayIndex !== null && this.selectedDayIndex !== undefined) {\r\n            const i = Math.floor(this.selectedDayIndex / 7);\r\n            const j = this.selectedDayIndex % 7;\r\n            this.selectDayOnClick(this.weeks[i][j]);\r\n        }\r\n    }\r\n\r\n    public selectDay(day: Date) {\r\n        if (this.isDisabledState || this.isDisabled(day)) {\r\n            return false;\r\n        }\r\n        const _day = new Date(day);\r\n        _day.setHours(0, 0, 0, 0);\r\n        this.selectedDay = new Date(_day);\r\n        if (!this.isSelectedMonth(day)) {\r\n          this.currentMonth = new Date(_day);\r\n          this.refreshCalendar();\r\n        }\r\n        return true;\r\n    }\r\n\r\n    public isSelected(date: Date): boolean {\r\n        if (this.selectedDay) {\r\n            const _date = new Date(date);\r\n            _date.setHours(0, 0, 0, 0);\r\n            this.selectedDay.setHours(0, 0, 0, 0);\r\n            return _date.getTime() === this.selectedDay.getTime();\r\n        } else {\r\n            return false;\r\n        }\r\n    }\r\n\r\n    public isSelectedMonth(date: Date): boolean {\r\n        const _date = new Date(date);\r\n        _date.setHours(0, 0, 0, 0);\r\n        _date.setDate(1);\r\n        this.currentMonth.setHours(0, 0, 0, 0);\r\n        this.currentMonth.setDate(1);\r\n        return _date.getTime() === this.currentMonth.getTime();\r\n    }\r\n\r\n    public isDisabled(day) {\r\n        return this.isDisabledState || day.getTime() < this.minDate.getTime();\r\n    }\r\n\r\n    private getDaysInMonth (date: Date): number {\r\n        const _date = new Date(date);\r\n        _date.setMonth(_date.getMonth() + 1, 0);\r\n        return _date.getDate();\r\n    }\r\n\r\n    public nextMonth() {\r\n        this.currentMonth = new Date(this.currentMonth.setMonth(this.currentMonth.getMonth() + 1));\r\n        this.refreshCalendar();\r\n    }\r\n\r\n    public prevMonth(): boolean {\r\n        const prevMonth = new Date(this.currentMonth);\r\n        prevMonth.setMonth(prevMonth.getMonth() - 1, 1);\r\n\r\n        if (this.minDateFirstMonthDay.getTime() > prevMonth.getTime()) {\r\n            return false;\r\n        }\r\n        this.currentMonth = new Date(this.currentMonth.setMonth(this.currentMonth.getMonth() - 1));\r\n        this.refreshCalendar();\r\n        return true;\r\n    }\r\n\r\n    private refreshCalendar() {\r\n        this.isChangingMonth = true;\r\n        setTimeout(() => {\r\n            this.isChangingMonth = false;\r\n        }, 400);\r\n        this.monthDays = [];\r\n        this.weeks = [];\r\n        const firstDay: Date = new Date(this.currentMonth);\r\n        firstDay.setDate(1);\r\n        firstDay.setHours(0, 0, 0 , 0);\r\n        const prevMonthDays = (firstDay.getDay() + 6) % 7;\r\n\r\n        this.daysOnPage = 7 * Math.ceil( ( this.getDaysInMonth(firstDay) + prevMonthDays) / 7 );\r\n        let dayToAdd = firstDay.setDate(firstDay.getDate() - prevMonthDays);\r\n\r\n        for (let i = 0; i < this.daysOnPage; i++) {\r\n            this.monthDays.push(new Date(dayToAdd));\r\n            if (this.selectedDay && this.isSelected(new Date(dayToAdd))) {\r\n                this.selectedDayIndex = i;\r\n            }\r\n            dayToAdd += 86400000;\r\n        }\r\n        while (this.monthDays.length > 0) {\r\n            this.weeks.push(this.monthDays.splice(0, 7));\r\n        }\r\n    }\r\n\r\n    public changeFocus(diff: number, event: Event) {\r\n        const newIndex = this.selectedDayIndex + diff;\r\n        if (newIndex >= 0 && newIndex < this.daysOnPage) {\r\n            this.selectedDayIndex = newIndex;\r\n        } else if (newIndex >= this.daysOnPage) {\r\n            const selectedIndex = newIndex - this.daysOnPage;\r\n            this.nextMonth();\r\n            this.selectedDayIndex = selectedIndex;\r\n            if (this.weeks[0][0].getDate() > 8) {\r\n                this.selectedDayIndex += 7;\r\n            }\r\n        } else {\r\n            if (this.prevMonth()) {\r\n                this.selectedDayIndex = newIndex + this.daysOnPage;\r\n                if (this.weeks[this.weeks.length - 1][6].getDate() < 7) {\r\n                    this.selectedDayIndex -= 7;\r\n                }\r\n            }\r\n        }\r\n        event.stopPropagation();\r\n        event.preventDefault();\r\n        document.getElementById(this.selectedDayIndex.toString()).focus();\r\n    }\r\n\r\n}\r\n\r\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".calendar-form {\r\n    transform: translateY(-100%);\r\n    position: absolute;\r\n    width: 415px;\r\n    font-size: 14px;\r\n    box-sizing: border-box;\r\n    box-shadow: 0 1px 5px 0 rgba(100,100,100, 0.3);\r\n    padding: 20px 15px 25px;\r\n    background: #fff;\r\n}\r\n\r\n.month-row {\r\n    display: flex;\r\n    flex-direction: row;\r\n    justify-content: space-between;\r\n    margin: 10px 15px 40px 15px;\r\n    align-items: center;\r\n}\r\n\r\n.month-name {\r\n    float: left;\r\n    color: #8b5abf;\r\n    box-sizing: border-box;\r\n    height: 16px;\r\n}\r\n.month-name:focus {\r\n    outline: none;\r\n    border-bottom: 1px solid #8b5abf;\r\n}\r\n.month-name:first-letter {\r\n    text-transform: uppercase;\r\n}\r\n\r\n.month-buttons-area {\r\n    display: flex;\r\n    font-size: 18px;\r\n}\r\n.month-button {\r\n    color: #8b5abf;\r\n    cursor: pointer;\r\n}\r\n.month-button:hover {\r\n    stroke-width: 2px;\r\n}\r\n.month-button-1 {\r\n    order: 1;\r\n    margin-right: 20px;\r\n}\r\n.month-button-2 {\r\n    order: 2;\r\n}\r\n\r\n.weekdays-row {\r\n    display: flex;\r\n    flex-direction: row;\r\n    justify-content: space-between;\r\n    margin: 0 35px;\r\n}\r\n\r\n.calendar-hr {\r\n    background: #c4c4c4;\r\n    border: none;\r\n    height: 1px;\r\n    margin: 10px 10px 20px 10px;\r\n}\r\n\r\n.days-table {\r\n    display: flex;\r\n    flex-direction: column;\r\n}\r\n\r\n.week-row {\r\n    display: flex;\r\n    justify-content: space-between;\r\n    align-items: center;\r\n    margin-right: 20px;\r\n    margin-left: 20px;\r\n}\r\n\r\n.day-item {\r\n    font-size: 12px;\r\n    width: 36px;\r\n    height: 36px;\r\n    text-align: center;\r\n    margin: 6px 5px;\r\n}\r\n\r\n.day-item:focus {\r\n    outline: none;\r\n}\r\n\r\n.day-item:hover {\r\n    cursor: pointer;\r\n}\r\n\r\n.other-month-date {\r\n    opacity: 0.7;\r\n}\r\n\r\n.other-month-date svg text {\r\n    fill: #494545; /* #494545  with opacity .7 = #807d7d */\r\n}\r\n\r\n.selected {\r\n    background: #8b5abf;\r\n    border-radius: 30px;\r\n}\r\n.selected:hover, .tabbed {\r\n    box-shadow: 0 0 4px 0 #8b5abf;\r\n    border-radius: 50%;\r\n}\r\n.disabled-date svg text{\r\n    fill: #c4c4c4;\r\n}\r\n.disabled-date:hover {\r\n    cursor: default;\r\n}\r\n\r\n.days-table-change {\r\n    animation: changeMonth .4s 1;\r\n}\r\n\r\n@keyframes changeMonth {\r\n    from {opacity: 0; }\r\n    to { opacity: 1; }\r\n}\r\n\r\n.calendar-form {\r\n    position: absolute;\r\n    margin-top: -20px;\r\n    z-index: 6;\r\n}\r\n\r\n@media (max-width: 644px) { /* mobile */\r\n    .calendar-form {\r\n        max-width: 320px;\r\n    }\r\n    .weekdays-row {\r\n        justify-content: space-between;\r\n        margin: unset;\r\n    }\r\n    .calendar-hr {\r\n        width: 320px;\r\n        margin: 10px 0 20px -15px;\r\n    }\r\n    .days-table {\r\n        align-items: center;\r\n    }\r\n}\r\n\r\n@media (max-width: 340px) {\r\n    .calendar-form {\r\n        left: 0;\r\n    }\r\n}\r\n\r\n.svg-circle {\r\n\r\n}\r\n.day-item:hover .svg-circle {\r\n    display: block;\r\n}\r\n.circle {\r\n    display: none;\r\n    stroke-dasharray: 1000;\r\n    stroke-dashoffset: 1000;\r\n    transform: rotate(-90deg) translateX(-100%)\r\n}\r\n.day-item:hover .circle {\r\n    display: block;\r\n    animation: stroke 4s ease-out .1s forwards;\r\n}\r\n@keyframes stroke {\r\n    to {\r\n        stroke-dashoffset: 0;\r\n    }\r\n}\r\n\r\n\r\n.disabled-date:hover .circle {\r\n    display: none;\r\n}\r\n\r\n.selected svg text {\r\n    fill: #fff;\r\n}\r\n",
+                    "styleUrl": "./calendar-field.component.css"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [],
+                "line": 38
+            },
+            "implements": [
+                "OnInit",
+                "ControlValueAccessor"
+            ],
+            "templateData": "<div class=\"calendar-form\">\r\n    <div class=\"month-row\">\r\n        <span tabindex=\"0\" class=\"month-name\" (keydown.arrowright)=\"nextMonth()\" (keydown.arrowleft)=\"prevMonth()\"> {{ currentMonth | date: 'LLLL' }} {{ currentMonth | date: 'yyyy' }}</span>\r\n        <div class=\"month-buttons-area\">\r\n            <span (click)=\"prevMonth()\">\r\n                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"4 4 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"\r\n                     class=\"feather feather-chevron-left month-button month-button-1\">\r\n                    <polyline points=\"15 18 9 12 15 6\"/>\r\n                </svg>\r\n            </span>\r\n            <span (click)=\"nextMonth()\">\r\n                <svg\r\n                    xmlns=\"http://www.w3.org/2000/svg\" width=\"18\" height=\"18\" viewBox=\"4 4 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"\r\n                    class=\"feather feather-chevron-right month-button month-button-2\">\r\n                    <polyline points=\"9 18 15 12 9 6\"/>\r\n                </svg>\r\n            </span>\r\n        </div>\r\n    </div>\r\n    <div class=\"weekdays-row\">\r\n        <div *ngFor=\"let name of weekDays\"> {{ name }} </div>\r\n    </div>\r\n    <hr class=\"calendar-hr\">\r\n\r\n    <div class=\"days-table\" [ngClass]=\"{'days-table-change': isChangingMonth }\" tabindex=\"0\"\r\n         (keydown.enter)=\"selectDayByEnter()\"\r\n         (keydown.arrowup)=\"changeFocus(-7, $event)\"\r\n         (keydown.arrowdown)=\"changeFocus(+7, $event)\"\r\n         (keydown.arrowright)=\"changeFocus(+1, $event)\"\r\n         (keydown.arrowleft)=\"changeFocus(-1, $event)\">\r\n        <div *ngFor=\"let week of weeks; let i = index\" class=\"week-row\">\r\n            <div *ngFor=\"let day of week; let j = index\" class=\"day-item\"\r\n                 [ngClass]=\"{'selected': isSelected(day),\r\n                 'tabbed': i*7+j === selectedDayIndex,\r\n                 'other-month-date': !isSelectedMonth(day),\r\n                  'disabled-date': isDisabled(day)}\"\r\n                 (click)=\"selectDayOnClick(day)\"\r\n                 [id]=\"i*7+j\">\r\n\r\n                <svg height=\"36\" width=\"36\" class=\"svg-circle\">\r\n                    <circle class=\"circle\" cx=\"18\" cy=\"18\" r=\"17\" stroke=\"#8b5abf\" stroke-width=\"2\" fill-opacity=\"0\"> </circle>\r\n                    <text  x=\"50%\" y=\"50%\" text-anchor=\"middle\" fill=\"#000\" dy=\".3em\">{{ day.getDate() }}</text>\r\n                </svg>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</div>\r\n"
+        },
+        {
+            "name": "HeaderComponent",
+            "id": "component-HeaderComponent-246e2a69dc126a3bd76c6328dd3b93e2",
+            "file": "src/stories/header.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "storybook-header",
+            "styleUrls": [
+                "./header.css"
+            ],
+            "styles": [],
+            "template": "<header>    <div class=\"wrapper\">\n      <div>\n        <svg width=\"32\" height=\"32\" viewBox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">\n          <g fill=\"none\" fillRule=\"evenodd\">\n            <path\n              d=\"M10 0h12a10 10 0 0110 10v12a10 10 0 01-10 10H10A10 10 0 010 22V10A10 10 0 0110 0z\"\n              fill=\"#FFF\"\n            />\n            <path\n              d=\"M5.3 10.6l10.4 6v11.1l-10.4-6v-11zm11.4-6.2l9.7 5.5-9.7 5.6V4.4z\"\n              fill=\"#555AB9\"\n            />\n            <path\n              d=\"M27.2 10.6v11.2l-10.5 6V16.5l10.5-6zM15.7 4.4v11L6 10l9.7-5.5z\"\n              fill=\"#91BAF8\"\n            />\n          </g>\n        </svg>\n        <h1>Acme</h1>\n      </div>\n      <div>\n        <storybook-button\n          *ngIf=\"user\"\n          size=\"small\"\n          (onClick)=\"onLogout.emit($event)\"\n          label=\"Log out\"\n        ></storybook-button>\n        <storybook-button\n          *ngIf=\"!user\"\n          size=\"small\"\n          (onClick)=\"onLogin.emit($event)\"\n          label=\"Log in\"\n        ></storybook-button>\n        <storybook-button\n          *ngIf=\"!user\"\n          primary\n          size=\"small\"\n          (onClick)=\"onCreateAccount.emit($event)\"\n          label=\"Sign up\"\n        ></storybook-button>\n      </div>\n    </div>\n  </header>",
+            "templateUrl": [],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "user",
+                    "defaultValue": "null",
+                    "line": 53,
+                    "type": "unknown"
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "onCreateAccount",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 62,
+                    "type": "EventEmitter"
+                },
+                {
+                    "name": "onLogin",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 56,
+                    "type": "EventEmitter"
+                },
+                {
+                    "name": "onLogout",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 59,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, Input, Output, EventEmitter } from '@angular/core';\n\n@Component({\n  selector: 'storybook-header',\n  template: `<header>\n    <div class=\"wrapper\">\n      <div>\n        <svg width=\"32\" height=\"32\" viewBox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">\n          <g fill=\"none\" fillRule=\"evenodd\">\n            <path\n              d=\"M10 0h12a10 10 0 0110 10v12a10 10 0 01-10 10H10A10 10 0 010 22V10A10 10 0 0110 0z\"\n              fill=\"#FFF\"\n            />\n            <path\n              d=\"M5.3 10.6l10.4 6v11.1l-10.4-6v-11zm11.4-6.2l9.7 5.5-9.7 5.6V4.4z\"\n              fill=\"#555AB9\"\n            />\n            <path\n              d=\"M27.2 10.6v11.2l-10.5 6V16.5l10.5-6zM15.7 4.4v11L6 10l9.7-5.5z\"\n              fill=\"#91BAF8\"\n            />\n          </g>\n        </svg>\n        <h1>Acme</h1>\n      </div>\n      <div>\n        <storybook-button\n          *ngIf=\"user\"\n          size=\"small\"\n          (onClick)=\"onLogout.emit($event)\"\n          label=\"Log out\"\n        ></storybook-button>\n        <storybook-button\n          *ngIf=\"!user\"\n          size=\"small\"\n          (onClick)=\"onLogin.emit($event)\"\n          label=\"Log in\"\n        ></storybook-button>\n        <storybook-button\n          *ngIf=\"!user\"\n          primary\n          size=\"small\"\n          (onClick)=\"onCreateAccount.emit($event)\"\n          label=\"Sign up\"\n        ></storybook-button>\n      </div>\n    </div>\n  </header>`,\n  styleUrls: ['./header.css'],\n})\nexport default class HeaderComponent {\n  @Input()\n  user: unknown = null;\n\n  @Output()\n  onLogin = new EventEmitter<Event>();\n\n  @Output()\n  onLogout = new EventEmitter<Event>();\n\n  @Output()\n  onCreateAccount = new EventEmitter<Event>();\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".wrapper {\n  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;\n  border-bottom: 1px solid rgba(0, 0, 0, 0.1);\n  padding: 15px 20px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n}\n\nsvg {\n  display: inline-block;\n  vertical-align: top;\n}\n\nh1 {\n  font-weight: 900;\n  font-size: 20px;\n  line-height: 1;\n  margin: 6px 0 6px 10px;\n  display: inline-block;\n  vertical-align: top;\n}\n\nbutton + button {\n  margin-left: 10px;\n}\n",
+                    "styleUrl": "./header.css"
+                }
+            ],
+            "stylesData": ""
+        },
+        {
+            "name": "LoginComponent",
+            "id": "component-LoginComponent-4f922dfe1cca0f13cf10c56912d40b9d",
+            "file": "src/app/user/login/login.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-login",
+            "styleUrls": [
+                "./login.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./login.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 15
+                },
+                {
+                    "name": "onLogin",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 21,
+                    "modifierKind": [
+                        114
+                    ]
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, OnInit } from '@angular/core';\nimport { AuthService } from '../auth.service';\nimport { Router } from '@angular/router';\n\n@Component({\n  selector: 'app-login',\n  templateUrl: './login.component.html',\n  styleUrls: ['./login.component.scss']\n})\nexport class LoginComponent implements OnInit {\n\n  constructor(private authService: AuthService,\n              private router: Router) { }\n\n  ngOnInit(): void {\n    if (this.authService.currentUser) {\n      this.router.navigate(['/repos']);\n    }\n  }\n\n  public onLogin(): void {\n    this.authService.login().then( () => {\n      this.router.navigate(['/repos']);\n      }, () => {\n        console.log('Login error');\n      }\n    );\n  }\n\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./login.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "authService",
+                        "type": "AuthService"
+                    },
+                    {
+                        "name": "router",
+                        "type": "Router"
+                    }
+                ],
+                "line": 10,
+                "jsdoctags": [
+                    {
+                        "name": "authService",
+                        "type": "AuthService",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "router",
+                        "type": "Router",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "<p>login works!</p>\n<button (click)=\"onLogin()\">LOGIN</button>\n"
+        },
+        {
+            "name": "PageComponent",
+            "id": "component-PageComponent-cca1a8911321fa17756ce90c90de65cc",
+            "file": "src/stories/page.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "storybook-page",
+            "styleUrls": [
+                "./page.css"
+            ],
+            "styles": [],
+            "template": "<article>    <storybook-header\n      [user]=\"user\"\n      (onLogout)=\"onLogout.emit($event)\"\n      (onLogin)=\"onLogin.emit($event)\"\n      (onCreateAccount)=\"onCreateAccount.emit($event)\"\n    ></storybook-header>\n    <section>\n      <h2>Pages in Storybook</h2>\n      <p>\n        We recommend building UIs with a\n        <a href=\"https://componentdriven.org\" target=\"_blank\" rel=\"noopener noreferrer\">\n          <strong>component-driven</strong>\n        </a>\n        process starting with atomic components and ending with pages.\n      </p>\n      <p>\n        Render pages with mock data. This makes it easy to build and review page states without\n        needing to navigate to them in your app. Here are some handy patterns for managing page data\n        in Storybook:\n      </p>\n      <ul>\n        <li>\n          Use a higher-level connected component. Storybook helps you compose such data from the\n          \"args\" of child component stories\n        </li>\n        <li>\n          Assemble data in the page component from your services. You can mock these services out\n          using Storybook.\n        </li>\n      </ul>\n      <p>\n        Get a guided tutorial on component-driven development at\n        <a href=\"https://www.learnstorybook.com\" target=\"_blank\" rel=\"noopener noreferrer\">\n          Learn Storybook\n        </a>\n        . Read more in the\n        <a href=\"https://storybook.js.org/docs\" target=\"_blank\" rel=\"noopener noreferrer\">\n          docs\n        </a>\n        .\n      </p>\n      <div class=\"tip-wrapper\">\n        <span class=\"tip\">Tip</span> Adjust the width of the canvas with the\n        <svg width=\"10\" height=\"10\" viewBox=\"0 0 12 12\" xmlns=\"http://www.w3.org/2000/svg\">\n          <g fill=\"none\" fillRule=\"evenodd\">\n            <path\n              d=\"M1.5 5.2h4.8c.3 0 .5.2.5.4v5.1c-.1.2-.3.3-.4.3H1.4a.5.5 0 01-.5-.4V5.7c0-.3.2-.5.5-.5zm0-2.1h6.9c.3 0 .5.2.5.4v7a.5.5 0 01-1 0V4H1.5a.5.5 0 010-1zm0-2.1h9c.3 0 .5.2.5.4v9.1a.5.5 0 01-1 0V2H1.5a.5.5 0 010-1zm4.3 5.2H2V10h3.8V6.2z\"\n              id=\"a\"\n              fill=\"#999\"\n            />\n          </g>\n        </svg>\n        Viewports addon in the toolbar\n      </div>\n    </section>\n  </article>",
+            "templateUrl": [],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "user",
+                    "defaultValue": "null",
+                    "line": 66,
+                    "type": "unknown"
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "onCreateAccount",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 75,
+                    "type": "EventEmitter"
+                },
+                {
+                    "name": "onLogin",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 69,
+                    "type": "EventEmitter"
+                },
+                {
+                    "name": "onLogout",
+                    "defaultValue": "new EventEmitter<Event>()",
+                    "line": 72,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, Input, Output, EventEmitter } from '@angular/core';\n\n@Component({\n  selector: 'storybook-page',\n  template: `<article>\n    <storybook-header\n      [user]=\"user\"\n      (onLogout)=\"onLogout.emit($event)\"\n      (onLogin)=\"onLogin.emit($event)\"\n      (onCreateAccount)=\"onCreateAccount.emit($event)\"\n    ></storybook-header>\n    <section>\n      <h2>Pages in Storybook</h2>\n      <p>\n        We recommend building UIs with a\n        <a href=\"https://componentdriven.org\" target=\"_blank\" rel=\"noopener noreferrer\">\n          <strong>component-driven</strong>\n        </a>\n        process starting with atomic components and ending with pages.\n      </p>\n      <p>\n        Render pages with mock data. This makes it easy to build and review page states without\n        needing to navigate to them in your app. Here are some handy patterns for managing page data\n        in Storybook:\n      </p>\n      <ul>\n        <li>\n          Use a higher-level connected component. Storybook helps you compose such data from the\n          \"args\" of child component stories\n        </li>\n        <li>\n          Assemble data in the page component from your services. You can mock these services out\n          using Storybook.\n        </li>\n      </ul>\n      <p>\n        Get a guided tutorial on component-driven development at\n        <a href=\"https://www.learnstorybook.com\" target=\"_blank\" rel=\"noopener noreferrer\">\n          Learn Storybook\n        </a>\n        . Read more in the\n        <a href=\"https://storybook.js.org/docs\" target=\"_blank\" rel=\"noopener noreferrer\">\n          docs\n        </a>\n        .\n      </p>\n      <div class=\"tip-wrapper\">\n        <span class=\"tip\">Tip</span> Adjust the width of the canvas with the\n        <svg width=\"10\" height=\"10\" viewBox=\"0 0 12 12\" xmlns=\"http://www.w3.org/2000/svg\">\n          <g fill=\"none\" fillRule=\"evenodd\">\n            <path\n              d=\"M1.5 5.2h4.8c.3 0 .5.2.5.4v5.1c-.1.2-.3.3-.4.3H1.4a.5.5 0 01-.5-.4V5.7c0-.3.2-.5.5-.5zm0-2.1h6.9c.3 0 .5.2.5.4v7a.5.5 0 01-1 0V4H1.5a.5.5 0 010-1zm0-2.1h9c.3 0 .5.2.5.4v9.1a.5.5 0 01-1 0V2H1.5a.5.5 0 010-1zm4.3 5.2H2V10h3.8V6.2z\"\n              id=\"a\"\n              fill=\"#999\"\n            />\n          </g>\n        </svg>\n        Viewports addon in the toolbar\n      </div>\n    </section>\n  </article>`,\n  styleUrls: ['./page.css'],\n})\nexport default class PageComponent {\n  @Input()\n  user: unknown = null;\n\n  @Output()\n  onLogin = new EventEmitter<Event>();\n\n  @Output()\n  onLogout = new EventEmitter<Event>();\n\n  @Output()\n  onCreateAccount = new EventEmitter<Event>();\n}\n\n// export const Page = ({ user, onLogin, onLogout, onCreateAccount }) => (\n//   <article>\n//     <Header user={user} onLogin={onLogin} onLogout={onLogout} onCreateAccount={onCreateAccount} />\n\n// );\n// Page.propTypes = {\n//   user: PropTypes.shape({}),\n//   onLogin: PropTypes.func.isRequired,\n//   onLogout: PropTypes.func.isRequired,\n//   onCreateAccount: PropTypes.func.isRequired,\n// };\n\n// Page.defaultProps = {\n//   user: null,\n// };\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "section {\n  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;\n  font-size: 14px;\n  line-height: 24px;\n  padding: 48px 20px;\n  margin: 0 auto;\n  max-width: 600px;\n  color: #333;\n}\n\nh2 {\n  font-weight: 900;\n  font-size: 32px;\n  line-height: 1;\n  margin: 0 0 4px;\n  display: inline-block;\n  vertical-align: top;\n}\n\np {\n  margin: 1em 0;\n}\n\na {\n  text-decoration: none;\n  color: #1ea7fd;\n}\n\nul {\n  padding-left: 30px;\n  margin: 1em 0;\n}\n\nli {\n  margin-bottom: 8px;\n}\n\n.tip {\n  display: inline-block;\n  border-radius: 1em;\n  font-size: 11px;\n  line-height: 12px;\n  font-weight: 700;\n  background: #e7fdd8;\n  color: #66bf3c;\n  padding: 4px 12px;\n  margin-right: 10px;\n  vertical-align: top;\n}\n\n.tip-wrapper {\n  font-size: 13px;\n  line-height: 20px;\n  margin-top: 40px;\n  margin-bottom: 40px;\n}\n\n.tip-wrapper svg {\n  display: inline-block;\n  height: 12px;\n  width: 12px;\n  margin-right: 4px;\n  vertical-align: top;\n  margin-top: 3px;\n}\n\n.tip-wrapper svg path {\n  fill: #1ea7fd;\n}\n",
+                    "styleUrl": "./page.css"
+                }
+            ],
+            "stylesData": ""
+        },
+        {
+            "name": "RedirectComponent",
+            "id": "component-RedirectComponent-da815ba894f67aa728d3fde143ac2733",
+            "file": "src/app/user/redirect/redirect.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-redirect",
+            "styleUrls": [
+                "./redirect.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./redirect.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 16
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, OnInit } from '@angular/core';\nimport { AuthService } from '../auth.service';\nimport { ActivatedRoute } from '@angular/router';\n\n@Component({\n  selector: 'app-redirect',\n  templateUrl: './redirect.component.html',\n  styleUrls: ['./redirect.component.scss']\n})\nexport class RedirectComponent implements OnInit {\n\n  constructor(private authService: AuthService,\n              private route: ActivatedRoute) {\n  }\n\n  ngOnInit(): void {\n    window.opener.postMessage(this.route.snapshot.data.access_token);\n  }\n\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./redirect.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "authService",
+                        "type": "AuthService"
+                    },
+                    {
+                        "name": "route",
+                        "type": "ActivatedRoute"
+                    }
+                ],
+                "line": 10,
+                "jsdoctags": [
+                    {
+                        "name": "authService",
+                        "type": "AuthService",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "route",
+                        "type": "ActivatedRoute",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "<p>redirect works!</p>\n"
+        },
+        {
+            "name": "RepoContainerComponent",
+            "id": "component-RepoContainerComponent-3a19a6a4aaeeb2c8f5e3979e684e311c",
+            "file": "src/app/repos/repo-container/repo-container.component.ts",
+            "changeDetection": "ChangeDetectionStrategy.OnPush",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-repo-container",
+            "styleUrls": [
+                "./repo-container.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./repo-container.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "propertiesClass": [
+                {
+                    "name": "currentRepo$",
+                    "type": "Observable<Repo>",
+                    "optional": false,
+                    "description": "",
+                    "line": 18
+                },
+                {
+                    "name": "errorMessage$",
+                    "type": "Observable<string>",
+                    "optional": false,
+                    "description": "",
+                    "line": 19
+                },
+                {
+                    "name": "repos$",
+                    "type": "Observable<Repo[]>",
+                    "optional": false,
+                    "description": "",
+                    "line": 17
+                }
+            ],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 24
+                },
+                {
+                    "name": "onRepoClosed",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 35,
+                    "modifierKind": [
+                        114
+                    ]
+                },
+                {
+                    "name": "onRepoSelected",
+                    "args": [
+                        {
+                            "name": "repo",
+                            "type": "Repo"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 31,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "repo",
+                            "type": "Repo",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';\nimport { select, Store } from '@ngrx/store';\nimport { AppState } from '../state/repo.reducer';\nimport { Observable } from 'rxjs';\nimport { Repo } from '../repo';\nimport { cleanCurrentRepo, initializeRepos, setCurrentRepo } from '../state/repo.actions';\nimport { selectCurrentRepo, selectRepos, selectReposError } from '../state';\n\n@Component({\n  selector: 'app-repo-container',\n  templateUrl: './repo-container.component.html',\n  styleUrls: ['./repo-container.component.scss'],\n  changeDetection: ChangeDetectionStrategy.OnPush\n})\nexport class RepoContainerComponent implements OnInit {\n\n  repos$: Observable<Repo[]>;\n  currentRepo$: Observable<Repo>;\n  errorMessage$: Observable<string>;\n\n  constructor(private store: Store<AppState>) {\n  }\n\n  ngOnInit(): void {\n    this.store.dispatch(initializeRepos());\n    this.repos$ = this.store.pipe(select(selectRepos));\n    this.currentRepo$ = this.store.pipe(select(selectCurrentRepo));\n    this.errorMessage$ = this.store.pipe(select(selectReposError));\n  }\n\n  public onRepoSelected(repo: Repo): void {\n    this.store.dispatch(setCurrentRepo(repo));\n  }\n\n  public onRepoClosed(): void {\n    this.store.dispatch(cleanCurrentRepo());\n  }\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./repo-container.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [
+                    {
+                        "name": "store",
+                        "type": "Store<AppState>"
+                    }
+                ],
+                "line": 19,
+                "jsdoctags": [
+                    {
+                        "name": "store",
+                        "type": "Store<AppState>",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "<div class=\"row\">\n  <div class=\"col-md-4\">\n    <app-repo-list\n      [repos]=\"repos$ | async\"\n      [currentRepo]=\"currentRepo$ | async\"\n      [errorMessage]=\"errorMessage$ | async\"\n      (repoSelected)=\"onRepoSelected($event)\"\n    >\n    </app-repo-list>\n  </div>\n\n  <div class=\"col-md-8\">\n    <app-repo-info\n      [currentRepo]=\"currentRepo$ | async\"\n      (closeInfo)=\"onRepoClosed()\"\n    ></app-repo-info>\n  </div>\n\n</div>\n"
+        },
+        {
+            "name": "RepoInfoComponent",
+            "id": "component-RepoInfoComponent-0bc4c27a32a379c1da40ef0a38bab5ab",
+            "file": "src/app/repos/repo-info/repo-info.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-repo-info",
+            "styleUrls": [
+                "./repo-info.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./repo-info.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "currentRepo",
+                    "line": 11,
+                    "type": "Repo"
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "closeInfo",
+                    "defaultValue": "new EventEmitter()",
+                    "line": 12,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 17
+                },
+                {
+                    "name": "onCloseInfo",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 20,
+                    "modifierKind": [
+                        114
+                    ]
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';\nimport { Repo } from '../repo';\n\n@Component({\n  selector: 'app-repo-info',\n  templateUrl: './repo-info.component.html',\n  styleUrls: ['./repo-info.component.scss']\n})\nexport class RepoInfoComponent implements OnInit {\n\n  @Input() currentRepo: Repo;\n  @Output() closeInfo = new EventEmitter();\n\n  constructor() {\n  }\n\n  ngOnInit(): void {\n  }\n\n  public onCloseInfo(): void {\n    this.closeInfo.emit();\n  }\n\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./repo-info.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [],
+                "line": 12
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "\n<div class=\"card\" *ngIf=\"currentRepo\">\n  <div class=\"card-header\">\n    {{ currentRepo.name }}\n  </div>\n\n  <div class=\"card-body\">\n\n    <div class=\"form-group row\">\n      <span class=\"col-md-4\">Description:</span>\n      <div class=\"col-md-8\">\n        {{ currentRepo.description || '*No description*' }}\n      </div>\n    </div>\n\n    <div class=\"form-group row\">\n      <span class=\"col-md-4\">Created at:</span>\n      <div class=\"col-md-8\">\n        {{ currentRepo.created_at | date: 'dd/MM/yyyy' }}\n      </div>\n    </div>\n\n    <div class=\"form-group row\">\n      <span class=\"col-md-4\">Contributors:</span>\n      <div class=\"col-md-8\">\n        {{ currentRepo.contributors }}\n      </div>\n    </div>\n\n    <div class=\"form-group\">\n      <div class=\"col-md-10 col-md-offset-2\">\n        <span>\n          <button class=\"btn btn-primary\" (click)=\"onCloseInfo()\">\n            Close\n          </button>\n        </span>\n      </div>\n    </div>\n  </div>\n</div>\n<!--<div *ngIf=\"errorMessage$ | async as errorMessage\" class=\"alert alert-danger\">-->\n<!--  Error: {{ errorMessage }}-->\n<!--</div>-->\n"
+        },
+        {
+            "name": "RepoListComponent",
+            "id": "component-RepoListComponent-8fdaa572455130b23cebcbfc964428ca",
+            "file": "src/app/repos/repo-list/repo-list.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-repo-list",
+            "styleUrls": [
+                "./repo-list.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./repo-list.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [
+                {
+                    "name": "currentRepo",
+                    "line": 12,
+                    "type": "Repo"
+                },
+                {
+                    "name": "errorMessage",
+                    "line": 13,
+                    "type": "string"
+                },
+                {
+                    "name": "repos",
+                    "line": 11,
+                    "type": "Repo[]"
+                }
+            ],
+            "outputsClass": [
+                {
+                    "name": "repoSelected",
+                    "defaultValue": "new EventEmitter<Repo>()",
+                    "line": 14,
+                    "type": "EventEmitter"
+                }
+            ],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 18
+                },
+                {
+                    "name": "selectRepo",
+                    "args": [
+                        {
+                            "name": "repo",
+                            "type": "Repo"
+                        }
+                    ],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 21,
+                    "modifierKind": [
+                        114
+                    ],
+                    "jsdoctags": [
+                        {
+                            "name": "repo",
+                            "type": "Repo",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';\nimport { Repo } from '../repo';\n\n@Component({\n  selector: 'app-repo-list',\n  templateUrl: './repo-list.component.html',\n  styleUrls: ['./repo-list.component.scss']\n})\nexport class RepoListComponent implements OnInit {\n\n  @Input() repos: Repo[];\n  @Input() currentRepo: Repo;\n  @Input() errorMessage: string;\n  @Output() repoSelected = new EventEmitter<Repo>();\n\n  constructor() { }\n\n  ngOnInit(): void {\n  }\n\n  public selectRepo(repo: Repo) {\n    this.repoSelected.emit(repo);\n  }\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": ".card-body {\n  padding: 0;\n}\n",
+                    "styleUrl": "./repo-list.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [],
+                "line": 14
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "\n<div class=\"card\">\n\n  <div class=\"card-header\">\n    Repos\n  </div>\n\n  <div class=\"card-body\" *ngIf=\"repos\">\n    <div class=\"list-group\">\n      <button class=\"list-group-item list-group-item-action rounded-0\"\n              *ngFor=\"let repo of repos\"\n              [ngClass]=\"{'active': repo?.id === currentRepo?.id}\"\n              (click)=\"selectRepo(repo)\">\n        {{ repo.name }}\n      </button>\n    </div>\n  </div>\n</div>\n\n<div *ngIf=\"errorMessage\" class=\"alert alert-danger\">\n  Error: {{ errorMessage }}\n</div>\n"
+        },
+        {
+            "name": "WelcomeComponent",
+            "id": "component-WelcomeComponent-76de1f2d7fc33993f10f30199e002da5",
+            "file": "src/app/core/welcome/welcome.component.ts",
+            "encapsulation": [],
+            "entryComponents": [],
+            "inputs": [],
+            "outputs": [],
+            "providers": [],
+            "selector": "app-welcome",
+            "styleUrls": [
+                "./welcome.component.scss"
+            ],
+            "styles": [],
+            "templateUrl": [
+                "./welcome.component.html"
+            ],
+            "viewProviders": [],
+            "inputsClass": [],
+            "outputsClass": [],
+            "propertiesClass": [],
+            "methodsClass": [
+                {
+                    "name": "ngOnInit",
+                    "args": [],
+                    "optional": false,
+                    "returnType": "void",
+                    "typeParameters": [],
+                    "line": 12
+                }
+            ],
+            "hostBindings": [],
+            "hostListeners": [],
+            "description": "",
+            "rawdescription": "",
+            "type": "component",
+            "sourceCode": "import { Component, OnInit } from '@angular/core';\n\n@Component({\n  selector: 'app-welcome',\n  templateUrl: './welcome.component.html',\n  styleUrls: ['./welcome.component.scss']\n})\nexport class WelcomeComponent implements OnInit {\n\n  constructor() { }\n\n  ngOnInit(): void {\n  }\n\n}\n",
+            "assetsDirs": [],
+            "styleUrlsData": [
+                {
+                    "data": "",
+                    "styleUrl": "./welcome.component.scss"
+                }
+            ],
+            "stylesData": "",
+            "constructorObj": {
+                "name": "constructor",
+                "description": "",
+                "args": [],
+                "line": 8
+            },
+            "implements": [
+                "OnInit"
+            ],
+            "templateData": "<p>welcome works!</p>\n"
+        }
+    ],
+    "modules": [
+        {
+            "name": "AppModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": [
+                        {
+                            "name": "AppComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "imports",
+                    "elements": [
+                        {
+                            "name": "AppRoutingModule"
+                        },
+                        {
+                            "name": "CalendarFieldModule"
+                        },
+                        {
+                            "name": "CoreModule"
+                        },
+                        {
+                            "name": "SharedModule"
+                        },
+                        {
+                            "name": "UserModule"
+                        }
+                    ]
+                },
+                {
+                    "type": "exports",
+                    "elements": []
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": [
+                        {
+                            "name": "AppComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "AppRoutingModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": []
+                },
+                {
+                    "type": "imports",
+                    "elements": []
+                },
+                {
+                    "type": "exports",
+                    "elements": []
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "CalendarFieldModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": [
+                        {
+                            "name": "CalendarFieldComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "imports",
+                    "elements": []
+                },
+                {
+                    "type": "exports",
+                    "elements": [
+                        {
+                            "name": "CalendarFieldComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "CoreModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": [
+                        {
+                            "name": "WelcomeComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "imports",
+                    "elements": []
+                },
+                {
+                    "type": "exports",
+                    "elements": [
+                        {
+                            "name": "WelcomeComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "RepoModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": [
+                        {
+                            "name": "RepoContainerComponent"
+                        },
+                        {
+                            "name": "RepoInfoComponent"
+                        },
+                        {
+                            "name": "RepoListComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "imports",
+                    "elements": [
+                        {
+                            "name": "SharedModule"
+                        }
+                    ]
+                },
+                {
+                    "type": "exports",
+                    "elements": []
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "SharedModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": []
+                },
+                {
+                    "type": "imports",
+                    "elements": []
+                },
+                {
+                    "type": "exports",
+                    "elements": []
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        },
+        {
+            "name": "UserModule",
+            "children": [
+                {
+                    "type": "providers",
+                    "elements": []
+                },
+                {
+                    "type": "declarations",
+                    "elements": [
+                        {
+                            "name": "LoginComponent"
+                        },
+                        {
+                            "name": "RedirectComponent"
+                        }
+                    ]
+                },
+                {
+                    "type": "imports",
+                    "elements": []
+                },
+                {
+                    "type": "exports",
+                    "elements": []
+                },
+                {
+                    "type": "bootstrap",
+                    "elements": []
+                },
+                {
+                    "type": "classes",
+                    "elements": []
+                }
+            ]
+        }
+    ],
+    "miscellaneous": {
+        "variables": [
+            {
+                "name": "cleanCurrentRepo",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.cleanCurrentRepo)"
+            },
+            {
+                "name": "context",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/test.ts",
+                "type": "",
+                "defaultValue": "require.context('./', true, /\\.spec\\.ts$/)"
+            },
+            {
+                "name": "enrichCurrentRepo",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.enrichCurrentRepo, props<{contributors: string[]}>())"
+            },
+            {
+                "name": "enrichCurrentRepoFail",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.enrichCurrentRepoFail, props<{error: string}>())"
+            },
+            {
+                "name": "environment",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/environments/environment.prod.ts",
+                "type": "object",
+                "defaultValue": "{\n  production: true\n}"
+            },
+            {
+                "name": "environment",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/environments/environment.ts",
+                "type": "object",
+                "defaultValue": "{\n  production: false,\n  popUpOrigin: 'http://localhost:4200',\n  oAuthData: {\n    url: '/oauth',\n    client_id: 'a990979ec91d8c14d05e',\n    client_secret: 'b06773fecffc5effd645ab095000b634ab7465fc',\n    redirect_uri: 'http://localhost:4200/login/redirect',\n    scope: 'repo'\n  }\n}"
+            },
+            {
+                "name": "httpInterceptorProviders",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/core/http-interceptors/index.ts",
+                "type": "[]",
+                "defaultValue": "[\n  { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true }\n]"
+            },
+            {
+                "name": "initializeRepos",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.initializeRepos)"
+            },
+            {
+                "name": "initializeReposFail",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.initializeReposFail, props<{error: string}>())"
+            },
+            {
+                "name": "initializeReposSuccess",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.initializeReposSuccess, props<{repos: Repo[]}>())"
+            },
+            {
+                "name": "initialState",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.reducer.ts",
+                "type": "RepoState",
+                "defaultValue": "{\n  currentRepoId: null,\n  repos: [],\n  error: ''\n}"
+            },
+            {
+                "name": "initialState",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/user/state/user.reducer.ts",
+                "type": "UserState",
+                "defaultValue": "{\n  currentUser: null\n}"
+            },
+            {
+                "name": "Large",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Button/Button.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Large",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "LoggedIn",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Header.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "LoggedIn",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Page.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "LoggedOut",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Header.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "LoggedOut",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Page.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Primary",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Button/Button.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Primary",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "repoFeatureKey",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.reducer.ts",
+                "type": "string",
+                "defaultValue": "'repos'"
+            },
+            {
+                "name": "repoReducer",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.reducer.ts",
+                "type": "",
+                "defaultValue": "createReducer(\n  initialState,\n  on(repoActions.initializeReposSuccess, (state: RepoState, {repos}) => ({\n    ...state,\n    repos,\n    error: ''\n  })),\n  on(repoActions.initializeReposFail, (state: RepoState, {error}) => ({\n    ...state,\n    repos: [],\n    error\n  })),\n  on(repoActions.setCurrentRepo, (state: RepoState, currentRepo: Repo) => {\n    return {\n      ...state,\n      currentRepoId: currentRepo.id\n    };\n  }),\n  on(repoActions.enrichCurrentRepo, (state: RepoState, {contributors}) => {\n    const newRepos = state.repos.map((repo) =>\n      repo.id === state.currentRepoId ? {\n          ...repo,\n          contributors\n        }\n        : repo\n    );\n    return {\n      ...state,\n      repos: newRepos\n    };\n  }),\n  // on(repoActions.enrichCurrentRepoFail, (state: RepoState, {error}) => {\n  //   const newRepos = state.repos.map((repo) =>\n  //     repo.id === state.currentRepoId ? {\n  //         ...repo,\n  //         contributors\n  //       }\n  //       : repo\n  //   );\n  //   return {...\n  //     state;\n  //   };\n  // }),\n  on(repoActions.cleanCurrentRepo, (state: RepoState) => ({\n    ...state,\n    currentRepoId: null\n  }))\n)"
+            },
+            {
+                "name": "require",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/test.ts",
+                "type": "literal type"
+            },
+            {
+                "name": "Secondary",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Button/Button.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Secondary",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "selectCurrentRepo",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/index.ts",
+                "type": "",
+                "defaultValue": "createSelector(\n  selectReposFeature,\n  selectCurrentRepoId,\n  (state: RepoState, id: number) => id ? state.repos.find( repo => repo.id === id) : null\n)"
+            },
+            {
+                "name": "selectCurrentRepoId",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/index.ts",
+                "type": "",
+                "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.currentRepoId\n)"
+            },
+            {
+                "name": "selectRepos",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/index.ts",
+                "type": "",
+                "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.repos\n)"
+            },
+            {
+                "name": "selectReposError",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/index.ts",
+                "type": "",
+                "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.error\n)"
+            },
+            {
+                "name": "selectReposFeature",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/index.ts",
+                "type": "",
+                "defaultValue": "createFeatureSelector<AppState, RepoState>(repoFeatureKey)"
+            },
+            {
+                "name": "setCurrentRepo",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/repos/state/repo.actions.ts",
+                "type": "",
+                "defaultValue": "createAction(RepoActionTypes.setCurrentRepo, props<Repo>())"
+            },
+            {
+                "name": "Small",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Button/Button.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Small",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "",
+                "defaultValue": "Template.bind({})"
+            },
+            {
+                "name": "Template",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Header.stories.ts",
+                "type": "Story<Header>",
+                "defaultValue": "(args: Header) => ({\n  component: Header,\n  props: args,\n})"
+            },
+            {
+                "name": "Template",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Page.stories.ts",
+                "type": "Story<Page>",
+                "defaultValue": "(args: Page) => ({\n  component: Page,\n  props: args,\n})"
+            },
+            {
+                "name": "Template",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/Button/Button.stories.ts",
+                "type": "Story<Button>",
+                "defaultValue": "(args: Button) => ({\n  component: Button,\n  props: args,\n})"
+            },
+            {
+                "name": "Template",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "Story<CalendarFieldComponent>",
+                "defaultValue": "(args: CalendarFieldComponent) => ({\n  component: CalendarFieldComponent,\n  props: args,\n})"
+            },
+            {
+                "name": "userFeatureKey",
+                "ctype": "miscellaneous",
+                "subtype": "variable",
+                "file": "src/app/user/state/user.reducer.ts",
+                "type": "string",
+                "defaultValue": "'user'"
+            }
+        ],
+        "functions": [
+            {
+                "name": "reducer",
+                "file": "src/app/repos/state/repo.reducer.ts",
+                "ctype": "miscellaneous",
+                "subtype": "function",
+                "description": "",
+                "args": [
+                    {
+                        "name": "state"
+                    },
+                    {
+                        "name": "action"
+                    }
+                ],
+                "returnType": "RepoState",
+                "jsdoctags": [
+                    {
+                        "name": "state",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    },
+                    {
+                        "name": "action",
+                        "tagName": {
+                            "text": "param"
+                        }
+                    }
+                ]
+            }
+        ],
+        "typealiases": [],
+        "enumerations": [
+            {
+                "name": "RepoActionTypes",
+                "childs": [
+                    {
+                        "name": "initializeRepos",
+                        "value": "[Repo] Initialize repos"
+                    },
+                    {
+                        "name": "initializeReposSuccess",
+                        "value": "[Repo] Initialize repos success"
+                    },
+                    {
+                        "name": "initializeReposFail",
+                        "value": "[Repo] Initialize repos fail"
+                    },
+                    {
+                        "name": "setCurrentRepo",
+                        "value": "[Repo] Set current repo"
+                    },
+                    {
+                        "name": "enrichCurrentRepo",
+                        "value": "[Repo] Enrich current repo"
+                    },
+                    {
+                        "name": "enrichCurrentRepoFail",
+                        "value": "[Repo] Enrich current repo fail"
+                    },
+                    {
+                        "name": "cleanCurrentRepo",
+                        "value": "[Repo] Clean current repo"
+                    },
+                    {
+                        "name": "load",
+                        "value": "[Repo] Load"
+                    },
+                    {
+                        "name": "loadSuccess",
+                        "value": "[Repo] Load success"
+                    },
+                    {
+                        "name": "loadFail",
+                        "value": "[Repo] Load fail"
+                    }
+                ],
+                "ctype": "miscellaneous",
+                "subtype": "enum",
+                "description": "",
+                "file": "src/app/repos/state/repo.actions.ts"
+            }
+        ],
+        "groupedVariables": {
+            "src/app/repos/state/repo.actions.ts": [
+                {
+                    "name": "cleanCurrentRepo",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.cleanCurrentRepo)"
+                },
+                {
+                    "name": "enrichCurrentRepo",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.enrichCurrentRepo, props<{contributors: string[]}>())"
+                },
+                {
+                    "name": "enrichCurrentRepoFail",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.enrichCurrentRepoFail, props<{error: string}>())"
+                },
+                {
+                    "name": "initializeRepos",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.initializeRepos)"
+                },
+                {
+                    "name": "initializeReposFail",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.initializeReposFail, props<{error: string}>())"
+                },
+                {
+                    "name": "initializeReposSuccess",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.initializeReposSuccess, props<{repos: Repo[]}>())"
+                },
+                {
+                    "name": "setCurrentRepo",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.actions.ts",
+                    "type": "",
+                    "defaultValue": "createAction(RepoActionTypes.setCurrentRepo, props<Repo>())"
+                }
+            ],
+            "src/test.ts": [
+                {
+                    "name": "context",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/test.ts",
+                    "type": "",
+                    "defaultValue": "require.context('./', true, /\\.spec\\.ts$/)"
+                },
+                {
+                    "name": "require",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/test.ts",
+                    "type": "literal type"
+                }
+            ],
+            "src/environments/environment.prod.ts": [
+                {
+                    "name": "environment",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/environments/environment.prod.ts",
+                    "type": "object",
+                    "defaultValue": "{\n  production: true\n}"
+                }
+            ],
+            "src/environments/environment.ts": [
+                {
+                    "name": "environment",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/environments/environment.ts",
+                    "type": "object",
+                    "defaultValue": "{\n  production: false,\n  popUpOrigin: 'http://localhost:4200',\n  oAuthData: {\n    url: '/oauth',\n    client_id: 'a990979ec91d8c14d05e',\n    client_secret: 'b06773fecffc5effd645ab095000b634ab7465fc',\n    redirect_uri: 'http://localhost:4200/login/redirect',\n    scope: 'repo'\n  }\n}"
+                }
+            ],
+            "src/app/core/http-interceptors/index.ts": [
+                {
+                    "name": "httpInterceptorProviders",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/core/http-interceptors/index.ts",
+                    "type": "[]",
+                    "defaultValue": "[\n  { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true }\n]"
+                }
+            ],
+            "src/app/repos/state/repo.reducer.ts": [
+                {
+                    "name": "initialState",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.reducer.ts",
+                    "type": "RepoState",
+                    "defaultValue": "{\n  currentRepoId: null,\n  repos: [],\n  error: ''\n}"
+                },
+                {
+                    "name": "repoFeatureKey",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.reducer.ts",
+                    "type": "string",
+                    "defaultValue": "'repos'"
+                },
+                {
+                    "name": "repoReducer",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/repo.reducer.ts",
+                    "type": "",
+                    "defaultValue": "createReducer(\n  initialState,\n  on(repoActions.initializeReposSuccess, (state: RepoState, {repos}) => ({\n    ...state,\n    repos,\n    error: ''\n  })),\n  on(repoActions.initializeReposFail, (state: RepoState, {error}) => ({\n    ...state,\n    repos: [],\n    error\n  })),\n  on(repoActions.setCurrentRepo, (state: RepoState, currentRepo: Repo) => {\n    return {\n      ...state,\n      currentRepoId: currentRepo.id\n    };\n  }),\n  on(repoActions.enrichCurrentRepo, (state: RepoState, {contributors}) => {\n    const newRepos = state.repos.map((repo) =>\n      repo.id === state.currentRepoId ? {\n          ...repo,\n          contributors\n        }\n        : repo\n    );\n    return {\n      ...state,\n      repos: newRepos\n    };\n  }),\n  // on(repoActions.enrichCurrentRepoFail, (state: RepoState, {error}) => {\n  //   const newRepos = state.repos.map((repo) =>\n  //     repo.id === state.currentRepoId ? {\n  //         ...repo,\n  //         contributors\n  //       }\n  //       : repo\n  //   );\n  //   return {...\n  //     state;\n  //   };\n  // }),\n  on(repoActions.cleanCurrentRepo, (state: RepoState) => ({\n    ...state,\n    currentRepoId: null\n  }))\n)"
+                }
+            ],
+            "src/app/user/state/user.reducer.ts": [
+                {
+                    "name": "initialState",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/user/state/user.reducer.ts",
+                    "type": "UserState",
+                    "defaultValue": "{\n  currentUser: null\n}"
+                },
+                {
+                    "name": "userFeatureKey",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/user/state/user.reducer.ts",
+                    "type": "string",
+                    "defaultValue": "'user'"
+                }
+            ],
+            "src/stories/Button/Button.stories.ts": [
+                {
+                    "name": "Large",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Button/Button.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Primary",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Button/Button.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Secondary",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Button/Button.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Small",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Button/Button.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Template",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Button/Button.stories.ts",
+                    "type": "Story<Button>",
+                    "defaultValue": "(args: Button) => ({\n  component: Button,\n  props: args,\n})"
+                }
+            ],
+            "src/stories/calendar-field/calendar.stories.ts": [
+                {
+                    "name": "Large",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/calendar-field/calendar.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Primary",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/calendar-field/calendar.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Secondary",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/calendar-field/calendar.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Small",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/calendar-field/calendar.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Template",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/calendar-field/calendar.stories.ts",
+                    "type": "Story<CalendarFieldComponent>",
+                    "defaultValue": "(args: CalendarFieldComponent) => ({\n  component: CalendarFieldComponent,\n  props: args,\n})"
+                }
+            ],
+            "src/stories/Header.stories.ts": [
+                {
+                    "name": "LoggedIn",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Header.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "LoggedOut",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Header.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Template",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Header.stories.ts",
+                    "type": "Story<Header>",
+                    "defaultValue": "(args: Header) => ({\n  component: Header,\n  props: args,\n})"
+                }
+            ],
+            "src/stories/Page.stories.ts": [
+                {
+                    "name": "LoggedIn",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Page.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "LoggedOut",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Page.stories.ts",
+                    "type": "",
+                    "defaultValue": "Template.bind({})"
+                },
+                {
+                    "name": "Template",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/stories/Page.stories.ts",
+                    "type": "Story<Page>",
+                    "defaultValue": "(args: Page) => ({\n  component: Page,\n  props: args,\n})"
+                }
+            ],
+            "src/app/repos/state/index.ts": [
+                {
+                    "name": "selectCurrentRepo",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/index.ts",
+                    "type": "",
+                    "defaultValue": "createSelector(\n  selectReposFeature,\n  selectCurrentRepoId,\n  (state: RepoState, id: number) => id ? state.repos.find( repo => repo.id === id) : null\n)"
+                },
+                {
+                    "name": "selectCurrentRepoId",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/index.ts",
+                    "type": "",
+                    "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.currentRepoId\n)"
+                },
+                {
+                    "name": "selectRepos",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/index.ts",
+                    "type": "",
+                    "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.repos\n)"
+                },
+                {
+                    "name": "selectReposError",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/index.ts",
+                    "type": "",
+                    "defaultValue": "createSelector(\n  selectReposFeature,\n  (state: RepoState) => state.error\n)"
+                },
+                {
+                    "name": "selectReposFeature",
+                    "ctype": "miscellaneous",
+                    "subtype": "variable",
+                    "file": "src/app/repos/state/index.ts",
+                    "type": "",
+                    "defaultValue": "createFeatureSelector<AppState, RepoState>(repoFeatureKey)"
+                }
+            ]
+        },
+        "groupedFunctions": {
+            "src/app/repos/state/repo.reducer.ts": [
+                {
+                    "name": "reducer",
+                    "file": "src/app/repos/state/repo.reducer.ts",
+                    "ctype": "miscellaneous",
+                    "subtype": "function",
+                    "description": "",
+                    "args": [
+                        {
+                            "name": "state"
+                        },
+                        {
+                            "name": "action"
+                        }
+                    ],
+                    "returnType": "RepoState",
+                    "jsdoctags": [
+                        {
+                            "name": "state",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        },
+                        {
+                            "name": "action",
+                            "tagName": {
+                                "text": "param"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "groupedEnumerations": {
+            "src/app/repos/state/repo.actions.ts": [
+                {
+                    "name": "RepoActionTypes",
+                    "childs": [
+                        {
+                            "name": "initializeRepos",
+                            "value": "[Repo] Initialize repos"
+                        },
+                        {
+                            "name": "initializeReposSuccess",
+                            "value": "[Repo] Initialize repos success"
+                        },
+                        {
+                            "name": "initializeReposFail",
+                            "value": "[Repo] Initialize repos fail"
+                        },
+                        {
+                            "name": "setCurrentRepo",
+                            "value": "[Repo] Set current repo"
+                        },
+                        {
+                            "name": "enrichCurrentRepo",
+                            "value": "[Repo] Enrich current repo"
+                        },
+                        {
+                            "name": "enrichCurrentRepoFail",
+                            "value": "[Repo] Enrich current repo fail"
+                        },
+                        {
+                            "name": "cleanCurrentRepo",
+                            "value": "[Repo] Clean current repo"
+                        },
+                        {
+                            "name": "load",
+                            "value": "[Repo] Load"
+                        },
+                        {
+                            "name": "loadSuccess",
+                            "value": "[Repo] Load success"
+                        },
+                        {
+                            "name": "loadFail",
+                            "value": "[Repo] Load fail"
+                        }
+                    ],
+                    "ctype": "miscellaneous",
+                    "subtype": "enum",
+                    "description": "",
+                    "file": "src/app/repos/state/repo.actions.ts"
+                }
+            ]
+        },
+        "groupedTypeAliases": {}
+    },
+    "routes": {
+        "name": "<root>",
+        "kind": "module",
+        "className": "AppModule",
+        "children": [
+            {
+                "name": "appRoutes",
+                "filename": "src/app/app-routing.module.ts",
+                "module": "AppRoutingModule",
+                "children": [
+                    {
+                        "path": "",
+                        "component": "LoginComponent"
+                    },
+                    {
+                        "path": "login/redirect",
+                        "component": "RedirectComponent",
+                        "resolve": {
+                            "access_token": "RedirectResolver"
+                        }
+                    },
+                    {
+                        "path": "repos",
+                        "loadChildren": "./repos/repos.module#RepoModule",
+                        "canActivate": [
+                            "AuthGuard"
+                        ],
+                        "children": [
+                            {
+                                "kind": "module",
+                                "children": [],
+                                "module": "RepoModule"
+                            }
+                        ]
+                    },
+                    {
+                        "path": "**",
+                        "redirectTo": ""
+                    }
+                ],
+                "kind": "module"
+            }
+        ]
+    },
+    "coverage": {
+        "count": 1,
+        "status": "low",
+        "files": [
+            {
+                "filePath": "e2e/src/app.po.ts",
+                "type": "class",
+                "linktype": "classe",
+                "name": "AppPage",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/app.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "AppComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/core/guards/auth.guard.ts",
+                "type": "guard",
+                "linktype": "guard",
+                "name": "AuthGuard",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/core/http-interceptors/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "httpInterceptorProviders",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/core/http-interceptors/token-interceptor.ts",
+                "type": "interceptor",
+                "linktype": "interceptor",
+                "name": "TokenInterceptor",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/core/welcome/welcome.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "WelcomeComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/repo-container/repo-container.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "RepoContainerComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/8",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/repo-info/repo-info.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "RepoInfoComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/6",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/repo-list/repo-list.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "RepoListComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/8",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/repo.service.ts",
+                "type": "injectable",
+                "linktype": "injectable",
+                "name": "RepoService",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/repo.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "Repo",
+                "coveragePercent": 0,
+                "coverageCount": "0/6",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "selectCurrentRepo",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "selectCurrentRepoId",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "selectRepos",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "selectReposError",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/index.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "selectReposFeature",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "cleanCurrentRepo",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "enrichCurrentRepo",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "enrichCurrentRepoFail",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "initializeRepos",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "initializeReposFail",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "initializeReposSuccess",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.actions.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "setCurrentRepo",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.effects.ts",
+                "type": "injectable",
+                "linktype": "injectable",
+                "name": "RepoEffects",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "AppState",
+                "coveragePercent": 0,
+                "coverageCount": "0/2",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "RepoState",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "function",
+                "linksubtype": "function",
+                "name": "reducer",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "initialState",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "repoFeatureKey",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/repos/state/repo.reducer.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "repoReducer",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/state/app.state.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "AppState",
+                "coveragePercent": 0,
+                "coverageCount": "0/2",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/auth.service.ts",
+                "type": "injectable",
+                "linktype": "injectable",
+                "name": "AuthService",
+                "coveragePercent": 0,
+                "coverageCount": "0/12",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/auth.service.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "OAuthResponse",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/login/login.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "LoginComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/4",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/redirect/redirect.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "RedirectComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/redirect/redirect.resolver.ts",
+                "type": "guard",
+                "linktype": "guard",
+                "name": "RedirectResolver",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/state/user.reducer.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "AppState",
+                "coveragePercent": 0,
+                "coverageCount": "0/2",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/state/user.reducer.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "UserState",
+                "coveragePercent": 0,
+                "coverageCount": "0/2",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/state/user.reducer.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "initialState",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/state/user.reducer.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "userFeatureKey",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/app/user/user.ts",
+                "type": "interface",
+                "linktype": "interface",
+                "name": "User",
+                "coveragePercent": 0,
+                "coverageCount": "0/3",
+                "status": "low"
+            },
+            {
+                "filePath": "src/environments/environment.prod.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "environment",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/environments/environment.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "environment",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/Button.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Large",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/Button.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Primary",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/Button.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Secondary",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/Button.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Small",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/Button.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Template",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Button/button.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "ButtonComponent",
+                "coveragePercent": 83,
+                "coverageCount": "5/6",
+                "status": "very-good"
+            },
+            {
+                "filePath": "src/stories/Header.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "LoggedIn",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Header.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "LoggedOut",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Header.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Template",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Page.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "LoggedIn",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Page.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "LoggedOut",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/Page.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Template",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar-field.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "CalendarFieldComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/34",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Large",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Primary",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Secondary",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Small",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/calendar-field/calendar.stories.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "Template",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/header.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "HeaderComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/5",
+                "status": "low"
+            },
+            {
+                "filePath": "src/stories/page.component.ts",
+                "type": "component",
+                "linktype": "component",
+                "name": "PageComponent",
+                "coveragePercent": 0,
+                "coverageCount": "0/5",
+                "status": "low"
+            },
+            {
+                "filePath": "src/test.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "context",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            },
+            {
+                "filePath": "src/test.ts",
+                "type": "variable",
+                "linktype": "miscellaneous",
+                "linksubtype": "variable",
+                "name": "require",
+                "coveragePercent": 0,
+                "coverageCount": "0/1",
+                "status": "low"
+            }
+        ]
+    }
+}

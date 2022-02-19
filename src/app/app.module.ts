@@ -15,6 +15,8 @@ import { UserModule } from './user/user.module';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { SharedModule } from './shared/shared.module';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
+import { CalendarFieldModule } from '../stories/calendar-field/calendar-field.module';
+import { ReactiveFormsModule } from '@angular/forms';
 
 @NgModule({
   imports: [
@@ -30,7 +32,9 @@ import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
     }),
     CoreModule,
     SharedModule,
-    UserModule
+    UserModule,
+    CalendarFieldModule,
+    ReactiveFormsModule
   ],
   providers: [
     httpInterceptorProviders
